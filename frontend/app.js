@@ -5,11 +5,13 @@ let state = {
   houses: [],
   currentHouseId: parseInt(localStorage.getItem("houseId") || "0") || null,
   view: localStorage.getItem("view") || "weekly",
-  anchor: new Date(), // today
+  anchor: new Date(),
   calendar: null,
   draggingId: null,
   selectedDay: null,
   authMode: "login",
+  history: [],
+  historyVisible: false,
 };
 
 function headers() {
@@ -31,11 +33,11 @@ function saveState(){
 }
 function fmtDate(d){ return d.toISOString().slice(0,10); }
 function parseDate(s){ return new Date(s+"T12:00:00"); }
-function todayISO(){ return new Date().toISOString().slice(0,10); } // UTC, matches backend today_iso()
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function isPast(dateStr){ if(!dateStr) return false; return dateStr < todayISO(); }
 function mondayOf(d){
   const x = new Date(d);
-  const day = x.getDay(); // 0 Sun
+  const day = x.getDay();
   const diff = (day===0 ? -6 : 1 - day);
   x.setDate(x.getDate()+diff);
   x.setHours(12,0,0,0);
@@ -55,9 +57,29 @@ function rangeForView(){
     return {from:d,to:d,label: d};
   }
 }
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
+
+// --- theme ---
+function applyTheme(){
+  const th = localStorage.getItem("lavagna_theme") || "light";
+  const accent = localStorage.getItem("lavagna_accent") || "#222222";
+  document.body.classList.remove("theme-dark","theme-warm","theme-light");
+  document.body.classList.add("theme-"+th);
+  document.documentElement.style.setProperty("--accent", accent);
+  const sel=document.getElementById("theme-select");
+  const ac=document.getElementById("theme-accent");
+  if(sel) sel.value=th;
+  if(ac) ac.value=accent;
+}
+function saveTheme(th, accent){
+  localStorage.setItem("lavagna_theme", th);
+  if(accent) localStorage.setItem("lavagna_accent", accent);
+  applyTheme();
+}
 
 // --- init ---
 document.addEventListener("DOMContentLoaded", async ()=>{
+  applyTheme();
   bindEvents();
   updateViewButtons();
   if(state.token){
@@ -75,9 +97,11 @@ function bindEvents(){
   document.getElementById("tab-register").onclick=()=>setAuthMode("register");
   document.getElementById("auth-form").onsubmit=handleAuth;
   document.getElementById("logout-btn").onclick=logout;
+  const sb=document.getElementById("settings-btn");
+  if(sb) sb.onclick=openSettings;
   document.getElementById("house-create-btn").onclick=createHouse;
   document.getElementById("house-join-btn").onclick=joinHouse;
-  document.getElementById("house-select").onchange=e=>{ state.currentHouseId=parseInt(e.target.value); saveState(); loadCalendar(); };
+  document.getElementById("house-select").onchange=e=>{ state.currentHouseId=parseInt(e.target.value); saveState(); loadCalendar(); loadHistory(); };
   document.getElementById("buffer-toggle").onchange=toggleBuffer;
   document.querySelectorAll(".view-btn").forEach(b=> b.onclick=()=>{ state.view=b.dataset.view; saveState(); updateViewButtons(); loadCalendar(); });
   document.getElementById("prev-btn").onclick=()=>{ shift(-1); };
@@ -86,21 +110,82 @@ function bindEvents(){
   document.getElementById("modal-close").onclick=closeModal;
   document.querySelector("#day-modal .modal-overlay").onclick=closeModal;
   document.getElementById("add-slot-btn").onclick=addSlot;
-  document.getElementById("modal-buffer-add").onclick=()=> addPlateFromInput(document.getElementById("modal-buffer-title"), document.getElementById("modal-buffer-note"), state.selectedDay, null, document.getElementById("modal-buffer-ac"));
-  // global buffer add
+  document.getElementById("modal-buffer-add").onclick=()=> {
+    const t=document.getElementById("modal-buffer-title");
+    const n=document.getElementById("modal-buffer-note");
+    const tg=document.getElementById("modal-buffer-tags");
+    addPlateFromInput(t,n,state.selectedDay,null,document.getElementById("modal-buffer-ac"),tg);
+  };
   const gTitle=document.querySelector("#global-buffer .plate-title-input");
   const gNote=document.querySelector("#global-buffer .plate-note-input");
+  const gTags=document.querySelector("#global-buffer .plate-tags-input");
   const gBtn=document.querySelector("#global-buffer .plate-add-btn");
   const gAc=document.querySelector("#global-buffer .autocomplete");
-  gBtn.onclick=()=> addPlateFromInput(gTitle,gNote,null,null,gAc);
+  if(gBtn) gBtn.onclick=()=> addPlateFromInput(gTitle,gNote,null,null,gAc,gTags);
   setupAutocomplete(gTitle,gAc);
   setupAutocomplete(document.getElementById("modal-buffer-title"), document.getElementById("modal-buffer-ac"));
-  // drag for global buffer
   const gb=document.getElementById("global-buffer");
   gb.addEventListener("dragover", e=>{ e.preventDefault(); gb.classList.add("drag-over"); });
   gb.addEventListener("dragleave", ()=> gb.classList.remove("drag-over"));
   gb.addEventListener("drop", e=>{ e.preventDefault(); gb.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, null, null); });
+  // history
+  const hq=document.getElementById("history-q");
+  const ht=document.getElementById("history-tag");
+  const hs=document.getElementById("history-sort");
+  const hr=document.getElementById("history-refresh");
+  const hg=document.getElementById("history-toggle");
+  if(hq) hq.addEventListener("input", debounce(loadHistory,300));
+  if(ht) ht.addEventListener("input", debounce(loadHistory,300));
+  if(hs) hs.addEventListener("change", loadHistory);
+  if(hr) hr.onclick=loadHistory;
+  if(hg) hg.onclick=()=>{
+    state.historyVisible=!state.historyVisible;
+    const list=document.getElementById("history-list");
+    list.style.display=state.historyVisible?"block":"none";
+    hg.textContent=state.historyVisible?"Collapse":"Expand";
+    if(state.historyVisible) loadHistory();
+  };
+  // settings
+  const so=document.getElementById("settings-overlay");
+  const sc=document.getElementById("settings-close");
+  if(so) so.onclick=closeSettings;
+  if(sc) sc.onclick=closeSettings;
+  document.querySelectorAll("#settings-tabs .tab").forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll("#settings-tabs .tab").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      document.querySelectorAll(".settings-pane").forEach(p=>p.style.display="none");
+      const tab=b.dataset.tab;
+      const pane=document.getElementById("settings-"+tab);
+      if(pane) pane.style.display="block";
+      if(tab==="template") renderTemplateEditor();
+      if(tab==="house") refreshSettingsHouse();
+      if(tab==="user") refreshSettingsUser();
+    };
+  });
+  const su=document.getElementById("settings-save-username");
+  const sp=document.getElementById("settings-save-pw");
+  if(su) su.onclick=saveUsername;
+  if(sp) sp.onclick=savePassword;
+  const sh=document.getElementById("settings-save-house");
+  if(sh) sh.onclick=saveHouseName;
+  const bt=document.getElementById("settings-buffer-toggle");
+  if(bt) bt.onchange=e=>{ const v=e.target.checked?"per_day":"global"; api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode:v})}).then(loadCalendar).catch(alert); document.getElementById("buffer-toggle").checked=e.target.checked; };
+  const ci=document.getElementById("copy-invite");
+  if(ci) ci.onclick=()=>{
+    const code=document.getElementById("settings-invite").textContent;
+    navigator.clipboard.writeText(code).then(()=> alert("copied "+code));
+  };
+  const ta=document.getElementById("template-add-btn");
+  if(ta) ta.onclick=templateAddField;
+  const ts=document.getElementById("template-save");
+  if(ts) ts.onclick=saveTemplate;
+  const thsel=document.getElementById("theme-select");
+  if(thsel) thsel.onchange=e=> saveTheme(e.target.value, localStorage.getItem("lavagna_accent")||"#222222");
+  const thacc=document.getElementById("theme-accent");
+  if(thacc) thacc.oninput=e=> saveTheme(localStorage.getItem("lavagna_theme")||"light", e.target.value);
 }
+function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
 function setAuthMode(m){
   state.authMode=m;
@@ -126,11 +211,15 @@ function showAuth(){
   document.getElementById("houses-view").style.display="none";
   document.getElementById("app-view").style.display="none";
   document.getElementById("logout-btn").style.display="none";
+  const sb=document.getElementById("settings-btn");
+  if(sb) sb.style.display="none";
   document.getElementById("user-info").textContent="";
 }
 async function onLoggedIn(){
   document.getElementById("auth-view").style.display="none";
   document.getElementById("logout-btn").style.display="inline-block";
+  const sb=document.getElementById("settings-btn");
+  if(sb) sb.style.display="inline-block";
   document.getElementById("user-info").textContent=state.user.username;
   await loadHouses();
 }
@@ -147,24 +236,23 @@ async function loadHouses(){
     state.houses.forEach(h=>{
       const div=document.createElement("div");
       div.className="card house-card";
-      div.innerHTML=`<strong>${h.name}</strong><br><small>code: ${h.invite_code} — ${h.buffer_mode}</small>`;
-      div.onclick=()=>{ state.currentHouseId=h.id; saveState(); showApp(); loadCalendar(); };
+      div.innerHTML=`<strong>${escapeHtml(h.name)}</strong><br><small>code: ${escapeHtml(h.invite_code)} — ${escapeHtml(h.buffer_mode)} — template: ${escapeHtml((h.daily_template||[]).join(", "))}</small>`;
+      div.onclick=()=>{ state.currentHouseId=h.id; saveState(); showApp(); loadCalendar(); loadHistory(); };
       list.appendChild(div);
       const opt=document.createElement("option");
       opt.value=h.id; opt.textContent=h.name;
       if(h.id===state.currentHouseId) opt.selected=true;
       sel.appendChild(opt);
     });
-    // if current not in list, pick first
     if(!state.currentHouseId || !state.houses.find(h=>h.id===state.currentHouseId)){
       state.currentHouseId=state.houses[0].id; saveState();
     }
   }
-  // decide view
   if(state.houses.length>0){
     document.getElementById("houses-view").style.display="none";
     showApp();
     await loadCalendar();
+    await loadHistory();
   } else {
     document.getElementById("houses-view").style.display="block";
     document.getElementById("app-view").style.display="none";
@@ -209,6 +297,8 @@ async function toggleBuffer(e){
   try{
     await api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode})});
     loadCalendar();
+    const sb=document.getElementById("settings-buffer-toggle");
+    if(sb) sb.checked=e.target.checked;
   }catch(err){ alert(err.message); e.target.checked=!e.target.checked; }
 }
 async function loadCalendar(){
@@ -218,11 +308,12 @@ async function loadCalendar(){
   try{
     const data=await api(`/api/calendar?house_id=${state.currentHouseId}&from=${from}&to=${to}`);
     state.calendar=data;
-    // update house invite + buffer toggle
     document.getElementById("house-invite").textContent=`code: ${data.house.invite_code}`;
-    document.getElementById("buffer-toggle").checked = data.house.buffer_mode==="per_day";
+    const bt=document.getElementById("buffer-toggle");
+    if(bt) bt.checked = data.house.buffer_mode==="per_day";
+    const sbt=document.getElementById("settings-buffer-toggle");
+    if(sbt) sbt.checked = data.house.buffer_mode==="per_day";
     document.getElementById("buffer-mode-label").textContent=`(${data.house.buffer_mode})`;
-    // ensure select matches
     const sel=document.getElementById("house-select");
     if(sel.value!=String(state.currentHouseId)) sel.value=state.currentHouseId;
     render();
@@ -243,6 +334,54 @@ function render(){
   else renderDaily();
   renderGlobalBuffer();
 }
+
+// history
+async function loadHistory(){
+  if(!state.currentHouseId) return;
+  const q=document.getElementById("history-q")?.value.trim()||"";
+  const tag=document.getElementById("history-tag")?.value.trim()||"";
+  const sort=document.getElementById("history-sort")?.value||"name";
+  try{
+    const data=await api(`/api/plates/history?house_id=${state.currentHouseId}&sort=${encodeURIComponent(sort)}&limit=100&q=${encodeURIComponent(q)}&tag=${encodeURIComponent(tag)}`);
+    state.history=data;
+    renderHistory();
+  }catch(e){ console.error("history",e); }
+}
+function renderHistory(){
+  const list=document.getElementById("history-list");
+  const cnt=document.getElementById("history-count");
+  if(!list) return;
+  list.innerHTML="";
+  if(cnt) cnt.textContent=`(${state.history.length})`;
+  if(state.history.length===0){
+    list.innerHTML="<div style='font-size:13px;color:#666'>No plates yet.</div>";
+    return;
+  }
+  state.history.forEach(entry=>{
+    const div=document.createElement("div");
+    div.className="history-item";
+    const tagsHtml=entry.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+    div.innerHTML=`<div><strong>${escapeHtml(entry.title)}</strong> <span style="font-size:11px;color:#777">×${entry.count}</span><div style="font-size:11px;color:#555">${tagsHtml} ${entry.example_note?escapeHtml(entry.example_note):""}</div></div>`;
+    const btn=document.createElement("button");
+    btn.textContent="Add to buffer";
+    btn.onclick=async()=>{
+      try{ await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, tags: entry.tags.join(","), date:null})}); loadCalendar(); loadHistory(); }catch(e){ alert(e.message); }
+    };
+    const btn2=document.createElement("button");
+    btn2.textContent="Add to today";
+    btn2.style.marginLeft="6px";
+    btn2.onclick=async()=>{
+      const today=todayISO();
+      // find today's slot first if exists else create via template? For quick, add to day buffer
+      try{ await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, tags: entry.tags.join(","), date:today})}); loadCalendar(); }catch(e){ alert(e.message); }
+    };
+    const wrap=document.createElement("div");
+    wrap.appendChild(btn); wrap.appendChild(btn2);
+    div.appendChild(wrap);
+    list.appendChild(div);
+  });
+}
+
 function renderWeekly(){
   const c=document.getElementById("weekly-view");
   c.innerHTML="";
@@ -264,7 +403,6 @@ function renderWeekly(){
       slotsWrap.appendChild(sDiv);
     });
     col.appendChild(slotsWrap);
-    // per_day buffer inside day column if mode per_day and has buffer
     if(state.calendar.house.buffer_mode==="per_day" && day.day_buffer.length>0){
       const buf=document.createElement("div");
       buf.className="buffer-zone";
@@ -281,17 +419,17 @@ function renderWeekly(){
       }
       col.appendChild(buf);
     }
-    // add plate to day buffer quick add if per_day — hidden for past
     if(state.calendar.house.buffer_mode==="per_day" && !past){
       const add=document.createElement("div");
       add.className="add-plate";
       add.style.padding="8px";
-      add.innerHTML=`<input class="plate-title-input" placeholder="Add to day buffer" data-date="${day.date}"><input class="plate-note-input" placeholder="note"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
+      add.innerHTML=`<input class="plate-title-input" placeholder="Add to day buffer" data-date="${day.date}"><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
       const titleIn=add.querySelector(".plate-title-input");
       const noteIn=add.querySelector(".plate-note-input");
+      const tagsIn=add.querySelector(".plate-tags-input");
       const btn=add.querySelector("button");
       const ac=add.querySelector(".autocomplete");
-      btn.onclick=()=> addPlateFromInput(titleIn, noteIn, day.date, null, ac);
+      btn.onclick=()=> addPlateFromInput(titleIn, noteIn, day.date, null, ac, tagsIn);
       setupAutocomplete(titleIn, ac);
       col.appendChild(add);
     }
@@ -306,7 +444,7 @@ function renderSlot(slot, date){
   div.dataset.date=date;
   const title=document.createElement("div");
   title.className="slot-title";
-  title.innerHTML=`<span>${slot.label}</span>` + (past ? ` <span class="past-label">locked</span>` : "");
+  title.innerHTML=`<span>${escapeHtml(slot.label)}</span>` + (past ? ` <span class="past-label">locked</span>` : "");
   if(!past){
     const del=document.createElement("button");
     del.textContent="✕";
@@ -322,12 +460,13 @@ function renderSlot(slot, date){
   if(!past){
     const add=document.createElement("div");
     add.className="add-plate";
-    add.innerHTML=`<input class="plate-title-input" placeholder="Add plate to ${slot.label}" data-date="${date}" data-slot="${slot.id}"><input class="plate-note-input" placeholder="note"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
+    add.innerHTML=`<input class="plate-title-input" placeholder="Add plate to ${escapeHtml(slot.label)}" data-date="${date}" data-slot="${slot.id}"><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags: fish, meat"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
     const titleIn=add.querySelector(".plate-title-input");
     const noteIn=add.querySelector(".plate-note-input");
+    const tagsIn=add.querySelector(".plate-tags-input");
     const btn=add.querySelector("button");
     const ac=add.querySelector(".autocomplete");
-    btn.onclick=()=> addPlateFromInput(titleIn, noteIn, date, slot.id, ac);
+    btn.onclick=()=> addPlateFromInput(titleIn, noteIn, date, slot.id, ac, tagsIn);
     setupAutocomplete(titleIn, ac);
     div.appendChild(add);
     div.addEventListener("dragover", e=>{ e.preventDefault(); div.classList.add("drag-over"); });
@@ -345,9 +484,11 @@ function renderPlate(p, date, slotId){
   div.className="plate" + (past ? " past" : "");
   div.draggable = !past;
   div.dataset.plateId=p.id;
+  const tagsHtml=(p.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
   div.innerHTML=`
     <div class="plate-title">${escapeHtml(p.title)}${past? ' <span class="past-label">(past)</span>':''}</div>
     ${p.note?`<div class="plate-note">${escapeHtml(p.note)}</div>`:""}
+    ${tagsHtml?`<div class="plate-tags">${tagsHtml}</div>`:""}
     <div class="plate-meta">
       <button class="vote-btn ${p.my_vote===1?'active-up':''}" data-v="1" ${past?'disabled title="past locked"':''}>▲ ${p.up}</button>
       <button class="vote-btn ${p.my_vote===-1?'active-down':''}" data-v="-1" ${past?'disabled title="past locked"':''}>▼ ${p.down}</button>
@@ -357,7 +498,6 @@ function renderPlate(p, date, slotId){
   `;
   const actions=document.createElement("div");
   actions.className="plate-actions";
-  // only creator can edit/delete - but past locked hides them
   if(state.user && p.proposed_by===state.user.id && !past){
     const edit=document.createElement("button");
     edit.textContent="Edit";
@@ -366,11 +506,13 @@ function renderPlate(p, date, slotId){
       if(nt===null) return;
       const nn=prompt("Edit note", p.note);
       if(nn===null) return;
-      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn})}); loadCalendar(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message); }
+      const ng=prompt("Edit tags (comma separated: fish, meat, dessert)", (p.tags||[]).join(", "));
+      if(ng===null) return;
+      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn, tags:ng})}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message); }
     };
     const del=document.createElement("button");
     del.textContent="Delete";
-    del.onclick=async()=>{ if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message);} } };
+    del.onclick=async()=>{ if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message);} } };
     actions.appendChild(edit); actions.appendChild(del);
   } else if(past){
     const lock=document.createElement("span");
@@ -397,19 +539,16 @@ function renderPlate(p, date, slotId){
   }
   return div;
 }
-function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
 
 function renderGlobalBuffer(){
   const cont=document.getElementById("global-buffer-plates");
   cont.innerHTML="";
   if(!state.calendar) return;
-  // global buffer visible always, but label changes per mode
   document.querySelector("#global-buffer .buffer-desc").textContent = state.calendar.house.buffer_mode==="global"
     ? "Global shared across all days — drag plates here to keep as ideas"
     : "Global buffer (mode per_day active — this is shared, day buffers are inside each day)";
   state.calendar.global_buffer.forEach(p=>{
     const el=renderPlate(p, null, null);
-    // override drop? already draggable
     cont.appendChild(el);
   });
 }
@@ -420,7 +559,6 @@ function renderMonthly(){
   const grid=document.createElement("div");
   grid.className="month-grid";
   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(d=>{ const h=document.createElement("div"); h.className="month-header"; h.textContent=d; grid.appendChild(h); });
-  // need to pad start to Monday
   const firstDate=parseDate(state.calendar.days[0].date);
   let startPad = (firstDate.getDay()===0?6:firstDate.getDay()-1);
   for(let i=0;i<startPad;i++){ const empty=document.createElement("div"); grid.appendChild(empty); }
@@ -430,7 +568,7 @@ function renderMonthly(){
     cell.className="month-cell" + (past ? " past" : "");
     const d=parseDate(day.date);
     if(fmtDate(new Date())===day.date) cell.classList.add("today");
-    let mini = day.slots.map(s=> `${s.label}: ${s.plates.length}`).join(" | ");
+    let mini = day.slots.map(s=> `${escapeHtml(s.label)}: ${s.plates.length}`).join(" | ");
     if(day.day_buffer.length) mini += ` | buffer:${day.day_buffer.length}`;
     if(past) mini += ` <span class="past-label">(locked)</span>`;
     cell.innerHTML=`<strong>${d.getDate()}</strong><div class="mini-plates">${mini||"empty"}</div>`;
@@ -487,6 +625,133 @@ function renderDaily(){
   c.appendChild(wrap);
 }
 
+// --- settings ---
+function openSettings(){
+  document.getElementById("settings-modal").style.display="flex";
+  refreshSettingsUser();
+  refreshSettingsHouse();
+  renderTemplateEditor();
+  applyTheme();
+  // default tab user
+  document.querySelectorAll("#settings-tabs .tab").forEach(x=>x.classList.remove("active"));
+  document.querySelector("#settings-tabs .tab[data-tab='user']").classList.add("active");
+  document.querySelectorAll(".settings-pane").forEach(p=>p.style.display="none");
+  document.getElementById("settings-user").style.display="block";
+}
+function closeSettings(){ document.getElementById("settings-modal").style.display="none"; }
+function refreshSettingsUser(){
+  if(!state.user) return;
+  document.getElementById("settings-username").textContent=state.user.username;
+  const cont=document.getElementById("settings-houses");
+  cont.innerHTML="";
+  state.houses.forEach(h=>{
+    const row=document.createElement("div");
+    row.style.display="flex"; row.style.justifyContent="space-between"; row.style.alignItems="center"; row.style.padding="6px"; row.style.border="1px solid #eee"; row.style.borderRadius="6px"; row.style.margin="4px 0";
+    row.innerHTML=`<span>${escapeHtml(h.name)} <small>(${escapeHtml(h.invite_code)}) ${h.id===state.currentHouseId?"— active":""}</small></span>`;
+    const btn=document.createElement("button");
+    btn.textContent=h.id===state.currentHouseId?"Active":"Switch";
+    btn.disabled=h.id===state.currentHouseId;
+    btn.onclick=()=>{ state.currentHouseId=h.id; saveState(); loadCalendar(); loadHistory(); refreshSettingsUser(); refreshSettingsHouse(); renderTemplateEditor(); alert("switched to "+h.name); };
+    row.appendChild(btn);
+    cont.appendChild(row);
+  });
+}
+function refreshSettingsHouse(){
+  if(!state.calendar) return;
+  const h=state.calendar.house;
+  document.getElementById("settings-house-name").value=h.name;
+  document.getElementById("settings-invite").textContent=h.invite_code;
+  const memSpan=document.getElementById("settings-members");
+  if(memSpan){
+    // fetch members via get_house
+    api(`/api/houses/${h.id}`).then(data=>{
+      memSpan.textContent=(data.members||[]).map(m=>m.username).join(", ")||"—";
+    }).catch(()=> memSpan.textContent="—");
+  }
+  const bt=document.getElementById("settings-buffer-toggle");
+  if(bt) bt.checked=(h.buffer_mode==="per_day");
+}
+async function saveUsername(){
+  const inp=document.getElementById("settings-new-username");
+  const msg=document.getElementById("settings-user-msg");
+  const val=inp.value.trim();
+  if(!val){ msg.textContent="username required"; return; }
+  try{ const r=await api("/api/me",{method:"PUT", body:JSON.stringify({username:val})}); state.user.username=r.username; state.token=r.token; saveState(); document.getElementById("user-info").textContent=r.username; document.getElementById("settings-username").textContent=r.username; msg.textContent="username updated"; inp.value=""; }catch(e){ msg.textContent=e.message; }
+}
+async function savePassword(){
+  const oldp=document.getElementById("settings-old-pw").value;
+  const newp=document.getElementById("settings-new-pw").value;
+  const msg=document.getElementById("settings-user-msg");
+  if(!oldp||!newp){ msg.textContent="both passwords required"; return; }
+  try{ const r=await api("/api/me",{method:"PUT", body:JSON.stringify({password:oldp,new_password:newp})}); state.token=r.token; saveState(); msg.textContent="password updated"; document.getElementById("settings-old-pw").value=""; document.getElementById("settings-new-pw").value=""; }catch(e){ msg.textContent=e.message; }
+}
+async function saveHouseName(){
+  const inp=document.getElementById("settings-house-name");
+  const msg=document.getElementById("settings-house-msg");
+  const val=inp.value.trim();
+  if(!val){ msg.textContent="name required"; return; }
+  try{ await api(`/api/houses/${state.currentHouseId}`,{method:"PUT", body:JSON.stringify({name:val})}); msg.textContent="saved"; loadHouses(); loadCalendar(); }catch(e){ msg.textContent=e.message; }
+}
+// template
+function renderTemplateEditor(){
+  const cont=document.getElementById("template-list");
+  if(!cont||!state.calendar) return;
+  cont.innerHTML="";
+  const labels=state.calendar.house.daily_template || ["lunch","dinner"];
+  labels.forEach((lb,idx)=>{
+    const row=document.createElement("div");
+    row.className="template-row";
+    const inp=document.createElement("input");
+    inp.value=lb;
+    inp.dataset.idx=idx;
+    const up=document.createElement("button"); up.textContent="↑"; up.onclick=()=> moveTemplate(idx,-1);
+    const down=document.createElement("button"); down.textContent="↓"; down.onclick=()=> moveTemplate(idx,1);
+    const del=document.createElement("button"); del.textContent="✕"; del.onclick=()=> removeTemplate(idx);
+    inp.onchange=e=>{ labels[idx]=e.target.value.trim()||labels[idx]; };
+    row.appendChild(inp); row.appendChild(up); row.appendChild(down); row.appendChild(del);
+    cont.appendChild(row);
+  });
+}
+function templateAddField(){
+  const inp=document.getElementById("template-new-label");
+  const val=inp.value.trim();
+  if(!val) return;
+  const labels=state.calendar.house.daily_template || [];
+  if(labels.length>=8){ alert("max 8 fields"); return; }
+  labels.push(val);
+  state.calendar.house.daily_template=labels;
+  inp.value="";
+  renderTemplateEditor();
+}
+function removeTemplate(idx){
+  const labels=state.calendar.house.daily_template;
+  labels.splice(idx,1);
+  renderTemplateEditor();
+}
+function moveTemplate(idx,dir){
+  const labels=state.calendar.house.daily_template;
+  const n=idx+dir;
+  if(n<0||n>=labels.length) return;
+  const tmp=labels[idx]; labels[idx]=labels[n]; labels[n]=tmp;
+  renderTemplateEditor();
+}
+async function saveTemplate(){
+  const msg=document.getElementById("template-msg");
+  const cont=document.getElementById("template-list");
+  // read current inputs
+  const inputs=cont.querySelectorAll("input");
+  const labels=[];
+  inputs.forEach(i=>{ const v=i.value.trim(); if(v) labels.push(v); });
+  if(labels.length===0){ msg.textContent="at least one field"; return; }
+  const apply=document.getElementById("template-apply-future").checked;
+  try{
+    const res=await api(`/api/houses/${state.currentHouseId}/template?apply_future=${apply}`,{method:"PUT", body:JSON.stringify({labels})});
+    state.calendar.house.daily_template=res.daily_template;
+    msg.textContent="saved"+(apply?" + applied to future":"");
+    loadCalendar();
+  }catch(e){ msg.textContent=e.message; }
+}
+
 // --- modal ---
 function openModal(date){
   state.selectedDay=date;
@@ -494,10 +759,11 @@ function openModal(date){
   modal.style.display="flex";
   const past=isPast(date);
   document.getElementById("modal-date").textContent=date + (past ? " — past (read-only)" : "");
-  // disable add-slot / add-buffer UI for past
   document.getElementById("modal-buffer-add").disabled=past;
   document.getElementById("modal-buffer-title").disabled=past;
   document.getElementById("modal-buffer-note").disabled=past;
+  const mt=document.getElementById("modal-buffer-tags");
+  if(mt) mt.disabled=past;
   document.getElementById("new-slot-label").disabled=past;
   document.getElementById("add-slot-btn").disabled=past;
   if(past){
@@ -526,7 +792,6 @@ function refreshModal(){
   bufPlates.innerHTML="";
   day.day_buffer.forEach(p=> bufPlates.appendChild(renderPlate(p, day.date, null)));
   const modalBuf=document.getElementById("modal-buffer");
-  // clone to avoid stacking listeners, but simple guard
   modalBuf.replaceWith(modalBuf.cloneNode(true));
   const newBuf=document.getElementById("modal-buffer");
   if(!past){
@@ -551,27 +816,27 @@ async function fetchDayForModal(date){
 }
 
 // --- add plate ---
-async function addPlateFromInput(titleIn, noteIn, date, slotId, acEl){
+async function addPlateFromInput(titleIn, noteIn, date, slotId, acEl, tagsIn){
   if(date && isPast(date)){ alert("past days not modifiable"); return; }
   const title=titleIn.value.trim();
-  const note=noteIn.value.trim();
+  const note=noteIn?noteIn.value.trim():"";
+  const tags=tagsIn?tagsIn.value.trim():"";
   if(!title){ titleIn.focus(); return; }
-  const body={house_id: state.currentHouseId, title, note, date: date||null, slot_id: slotId||null};
+  const body={house_id: state.currentHouseId, title, note, tags, date: date||null, slot_id: slotId||null};
   try{
     await api("/api/plates",{method:"POST", body:JSON.stringify(body)});
-    titleIn.value=""; noteIn.value=""; if(acEl) acEl.style.display="none";
-    loadCalendar();
+    titleIn.value=""; if(noteIn) noteIn.value=""; if(tagsIn) tagsIn.value=""; if(acEl) acEl.style.display="none";
+    loadCalendar(); loadHistory();
     if(state.selectedDay) refreshModal();
   }catch(e){ alert(e.message); }
 }
 async function movePlate(plateId, toDate, toSlotId){
-  // quick client guard; server is authoritative
   const dragging = state.calendar ? findPlateDate(plateId) : null;
   if(dragging && isPast(dragging)){ alert("past days not modifiable (source)"); return; }
   if(toDate && isPast(toDate)){ alert("past days not modifiable (target)"); return; }
   try{
     await api(`/api/plates/${plateId}/move`,{method:"POST", body:JSON.stringify({to_date: toDate||null, to_slot_id: toSlotId||null})});
-    loadCalendar();
+    loadCalendar(); loadHistory();
     if(state.selectedDay) refreshModal();
   }catch(e){ alert(e.message); }
 }

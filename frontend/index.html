@@ -11,6 +11,7 @@
   <h1>🍝 Lavagna Cibo</h1>
   <div id="header-actions">
     <span id="user-info"></span>
+    <button id="settings-btn" style="display:none">⚙ Settings</button>
     <button id="logout-btn" style="display:none">Logout</button>
   </div>
 </header>
@@ -85,9 +86,30 @@
     <div class="add-plate">
       <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="">
       <input class="plate-note-input" placeholder="note (optional)">
+      <input class="plate-tags-input" placeholder="tags: fish, meat, dessert">
       <button class="plate-add-btn">Add</button>
       <div class="autocomplete"></div>
     </div>
+  </div>
+
+  <!-- HISTORY near global buffer -->
+  <div id="history-section" class="card" style="margin:20px">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+      <h3 style="margin:0">History — all plates <small id="history-count"></small></h3>
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
+        <input id="history-q" placeholder="search title" style="width:160px">
+        <input id="history-tag" placeholder="filter tag" style="width:120px">
+        <select id="history-sort">
+          <option value="name">Sort: name A-Z</option>
+          <option value="recent">Sort: recent</option>
+          <option value="count">Sort: most used</option>
+        </select>
+        <button id="history-refresh">↻</button>
+        <button id="history-toggle">Expand</button>
+      </div>
+    </div>
+    <div id="history-list" style="display:none; margin-top:12px; max-height:320px; overflow:auto"></div>
+    <div id="history-hint" style="font-size:12px; color:#666; margin-top:6px">Sortable by name — tags like fish, meat, first, dessert are editable per plate.</div>
   </div>
 </section>
 
@@ -104,6 +126,7 @@
       <div class="add-plate">
         <input class="plate-title-input" id="modal-buffer-title" placeholder="Add plate to day buffer">
         <input class="plate-note-input" id="modal-buffer-note" placeholder="note (optional)">
+        <input class="plate-tags-input" id="modal-buffer-tags" placeholder="tags">
         <button id="modal-buffer-add">Add</button>
         <div class="autocomplete" id="modal-buffer-ac"></div>
       </div>
@@ -111,6 +134,88 @@
     <div class="add-slot">
       <input id="new-slot-label" placeholder="Add new meal (e.g. breakfast)">
       <button id="add-slot-btn">Add slot</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" style="display:none">
+  <div class="modal-overlay" id="settings-overlay"></div>
+  <div class="modal-content" style="max-width:700px">
+    <button id="settings-close">✕</button>
+    <h2>Settings</h2>
+    <div class="tabs" id="settings-tabs">
+      <button class="tab active" data-tab="user">User</button>
+      <button class="tab" data-tab="house">House</button>
+      <button class="tab" data-tab="template">Daily Template</button>
+      <button class="tab" data-tab="theme">Theme</button>
+    </div>
+    <!-- user -->
+    <div id="settings-user" class="settings-pane">
+      <div class="card">
+        <h3>User</h3>
+        <div>Logged as <strong id="settings-username"></strong></div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+          <input id="settings-new-username" placeholder="new username">
+          <button id="settings-save-username">Change username</button>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+          <input id="settings-old-pw" type="password" placeholder="current password">
+          <input id="settings-new-pw" type="password" placeholder="new password">
+          <button id="settings-save-pw">Change password</button>
+        </div>
+        <div id="settings-user-msg" class="msg"></div>
+      </div>
+      <div class="card">
+        <h3>Your Houses — select active</h3>
+        <div id="settings-houses"></div>
+      </div>
+    </div>
+    <!-- house -->
+    <div id="settings-house" class="settings-pane" style="display:none">
+      <div class="card">
+        <h3>House Attributes</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+          <input id="settings-house-name" placeholder="house name" style="flex:1">
+          <button id="settings-save-house">Save name</button>
+        </div>
+        <div style="margin-top:8px; font-size:13px">Invite code: <code id="settings-invite"></code> <button id="copy-invite" style="padding:2px 6px; font-size:12px">Copy</button></div>
+        <div style="margin-top:8px">Members: <span id="settings-members"></span></div>
+        <label style="display:block; margin-top:10px"><input type="checkbox" id="settings-buffer-toggle"> day-specific buffer (per_day)</label>
+        <div id="settings-house-msg" class="msg"></div>
+      </div>
+    </div>
+    <!-- template -->
+    <div id="settings-template" class="settings-pane" style="display:none">
+      <div class="card">
+        <h3>Daily Template — applies to all following dates</h3>
+        <div style="font-size:12px; color:#666">Number of fields (meals) per day. Changes seed new dates; optionally apply to existing future dates.</div>
+        <div id="template-list" style="margin-top:10px; display:flex; flex-direction:column; gap:6px"></div>
+        <div style="display:flex; gap:8px; margin-top:10px">
+          <input id="template-new-label" placeholder="new field (e.g. breakfast)">
+          <button id="template-add-btn">Add field</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:center">
+          <button id="template-save">Save template</button>
+          <label><input type="checkbox" id="template-apply-future"> apply to existing future dates</label>
+        </div>
+        <div id="template-msg" class="msg"></div>
+      </div>
+    </div>
+    <!-- theme -->
+    <div id="settings-theme" class="settings-pane" style="display:none">
+      <div class="card">
+        <h3>Theme</h3>
+        <select id="theme-select">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="warm">Warm</option>
+        </select>
+        <div style="margin-top:10px">
+          <label>Accent: <input type="color" id="theme-accent" value="#222222"></label>
+        </div>
+        <div style="margin-top:8px; font-size:12px; color:#666">Theme stored locally per browser.</div>
+      </div>
     </div>
   </div>
 </div>

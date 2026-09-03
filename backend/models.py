@@ -15,6 +15,7 @@ class House(Base):
     name = Column(String, unique=True, nullable=False)
     invite_code = Column(String, unique=True, nullable=False, index=True)
     buffer_mode = Column(String, default="global", nullable=False)  # global or per_day
+    daily_template = Column(Text, default='["lunch","dinner"]', nullable=False)  # JSON array of labels
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class Membership(Base):
@@ -37,6 +38,7 @@ class Plate(Base):
     house_id = Column(Integer, ForeignKey("houses.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
     note = Column(Text, default="", nullable=False)
+    tags = Column(Text, default="", nullable=False)  # comma-separated lower tags, e.g. "fish,meat"
     date = Column(String, nullable=True, index=True)  # null = global buffer
     slot_id = Column(Integer, ForeignKey("slots.id"), nullable=True, index=True)
     proposed_by = Column(Integer, ForeignKey("users.id"), nullable=False)
