@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lavagna Cibo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>🍝 Lavagna Cibo</h1>
+  <div id="header-actions">
+    <span id="user-info"></span>
+    <button id="logout-btn" style="display:none">Logout</button>
+  </div>
+</header>
+
+<!-- AUTH -->
+<section id="auth-view">
+  <div class="card auth-card">
+    <div class="tabs">
+      <button class="tab active" id="tab-login">Login</button>
+      <button class="tab" id="tab-register">Register</button>
+    </div>
+    <form id="auth-form">
+      <input id="auth-username" placeholder="Username" required autocomplete="username">
+      <input id="auth-password" type="password" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" id="auth-submit">Login</button>
+      <div id="auth-msg" class="msg"></div>
+    </form>
+  </div>
+</section>
+
+<!-- HOUSES -->
+<section id="houses-view" style="display:none">
+  <div class="houses-container">
+    <h2>Your Houses</h2>
+    <div id="houses-list"></div>
+    <div class="house-actions">
+      <div class="card">
+        <h3>Create House</h3>
+        <input id="house-create-name" placeholder="House name (e.g. Casa Rossi)">
+        <button id="house-create-btn">Create</button>
+        <div id="house-create-msg" class="msg"></div>
+      </div>
+      <div class="card">
+        <h3>Join House</h3>
+        <input id="house-join-code" placeholder="Invite code or house name">
+        <button id="house-join-btn">Join</button>
+        <div id="house-join-msg" class="msg"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="app-view" style="display:none">
+  <div class="app-header">
+    <div class="house-switcher">
+      <select id="house-select"></select>
+      <span id="house-invite"></span>
+      <label style="margin-left:12px"><input type="checkbox" id="buffer-toggle"> day-specific buffer</label>
+    </div>
+    <div class="view-switcher">
+      <button class="view-btn active" data-view="weekly">Weekly</button>
+      <button class="view-btn" data-view="monthly">Monthly</button>
+      <button class="view-btn" data-view="daily">Daily</button>
+    </div>
+    <div class="nav-controls">
+      <button id="prev-btn">‹ Prev</button>
+      <button id="today-btn">Today</button>
+      <button id="next-btn">Next ›</button>
+      <span id="range-label"></span>
+    </div>
+  </div>
+
+  <div id="weekly-view"></div>
+  <div id="monthly-view" style="display:none"></div>
+  <div id="daily-view" style="display:none"></div>
+
+  <div id="global-buffer" class="buffer-zone">
+    <h3>Buffer <small>(drag here for unassigned)</small> <small id="buffer-mode-label"></small></h3>
+    <div class="buffer-desc">Global shared across all days — drag plates here to keep as ideas</div>
+    <div id="global-buffer-plates" class="plates"></div>
+    <div class="add-plate">
+      <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="">
+      <input class="plate-note-input" placeholder="note (optional)">
+      <button class="plate-add-btn">Add</button>
+      <div class="autocomplete"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DAY MODAL -->
+<div id="day-modal" style="display:none">
+  <div class="modal-overlay"></div>
+  <div class="modal-content">
+    <button id="modal-close">✕</button>
+    <h2 id="modal-date"></h2>
+    <div id="modal-slots" class="modal-slots"></div>
+    <div id="modal-buffer" class="buffer-zone">
+      <h3>Buffer for this day</h3>
+      <div id="modal-buffer-plates" class="plates"></div>
+      <div class="add-plate">
+        <input class="plate-title-input" id="modal-buffer-title" placeholder="Add plate to day buffer">
+        <input class="plate-note-input" id="modal-buffer-note" placeholder="note (optional)">
+        <button id="modal-buffer-add">Add</button>
+        <div class="autocomplete" id="modal-buffer-ac"></div>
+      </div>
+    </div>
+    <div class="add-slot">
+      <input id="new-slot-label" placeholder="Add new meal (e.g. breakfast)">
+      <button id="add-slot-btn">Add slot</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

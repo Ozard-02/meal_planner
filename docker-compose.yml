@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - db_data:/data
+    environment:
+      - DATABASE_URL=sqlite:////data/app.db
+      - SECRET_KEY=change-me-please
+    restart: unless-stopped
+
+volumes:
+  db_data:
