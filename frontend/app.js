@@ -446,8 +446,8 @@ function applyLanguage(lang){
   });
   const tap2=document.getElementById("theme-apply");
   if(tap2) tap2.textContent=t("settings.theme.apply");
-  const tr=document.getElementById("theme-reset");
-  if(tr) tr.textContent=t("settings.theme.reset");
+  const trReset=document.getElementById("theme-reset");
+  if(trReset) trReset.textContent=t("settings.theme.reset");
   const te=document.getElementById("theme-export");
   if(te) te.textContent=t("settings.theme.copy");
   const tp=document.querySelector("#theme-preview div:last-child");
@@ -459,6 +459,10 @@ function applyLanguage(lang){
   if(lc) lc.textContent=t("settings.language.choose");
 }
 const themePresets={
+  light:{bg:"#fafaf7",fg:"#222222",card:"#ffffff",header:"#ffffff",accent:"#222222","accent-fg":"#ffffff",muted:"#666666",border:"#e8e8e8"},
+  dark:{bg:"#1a1a1e",fg:"#eeeeee",card:"#2a2a2e",header:"#222222",accent:"#e0e0e0","accent-fg":"#1a1a1e",muted:"#aaaaaa",border:"#333333"},
+  warm:{bg:"#fdf6e3",fg:"#3a2d1a",card:"#fffaf0",header:"#fff4d6",accent:"#8b5a2b","accent-fg":"#ffffff",muted:"#8a7a5a",border:"#e8dcc3"}
+};
 function applyTheme(){
   const th = localStorage.getItem("lavagna_theme") || "light";
   document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom");
