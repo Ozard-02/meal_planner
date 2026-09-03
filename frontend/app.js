@@ -31,6 +31,8 @@ function saveState(){
 }
 function fmtDate(d){ return d.toISOString().slice(0,10); }
 function parseDate(s){ return new Date(s+"T12:00:00"); }
+function todayISO(){ return new Date().toISOString().slice(0,10); } // UTC, matches backend today_iso()
+function isPast(dateStr){ if(!dateStr) return false; return dateStr < todayISO(); }
 function mondayOf(d){
   const x = new Date(d);
   const day = x.getDay(); // 0 Sun
@@ -246,12 +248,13 @@ function renderWeekly(){
   c.innerHTML="";
   if(!state.calendar) return;
   state.calendar.days.forEach(day=>{
+    const past = isPast(day.date);
     const col=document.createElement("div");
-    col.className="day-column";
+    col.className="day-column" + (past ? " past" : "");
     const d=parseDate(day.date);
     const header=document.createElement("div");
     header.className="day-header";
-    header.innerHTML=`<strong>${d.toLocaleDateString('default',{weekday:'short'})}</strong><small>${day.date}</small>`;
+    header.innerHTML=`<strong>${d.toLocaleDateString('default',{weekday:'short'})}</strong><small>${day.date}</small>` + (past ? ` <span class="past-label">— past (locked)</span>` : "");
     header.onclick=()=> openModal(day.date);
     col.appendChild(header);
     const slotsWrap=document.createElement("div");
@@ -266,19 +269,20 @@ function renderWeekly(){
       const buf=document.createElement("div");
       buf.className="buffer-zone";
       buf.style.margin="8px";
-      buf.innerHTML=`<h3 style="font-size:13px">Day buffer</h3>`;
+      buf.innerHTML=`<h3 style="font-size:13px">Day buffer ${past?'<span class="past-label">(locked)</span>':''}</h3>`;
       const platesDiv=document.createElement("div");
       platesDiv.className="plates";
       day.day_buffer.forEach(p=> platesDiv.appendChild(renderPlate(p, day.date, null)));
       buf.appendChild(platesDiv);
-      // drop zone for per_day buffer
-      buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
-      buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
-      buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+      if(!past){
+        buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
+        buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
+        buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+      }
       col.appendChild(buf);
     }
-    // add plate to day buffer quick add if per_day
-    if(state.calendar.house.buffer_mode==="per_day"){
+    // add plate to day buffer quick add if per_day — hidden for past
+    if(state.calendar.house.buffer_mode==="per_day" && !past){
       const add=document.createElement("div");
       add.className="add-plate";
       add.style.padding="8px";
@@ -295,63 +299,66 @@ function renderWeekly(){
   });
 }
 function renderSlot(slot, date){
+  const past = isPast(date);
   const div=document.createElement("div");
-  div.className="slot";
+  div.className="slot" + (past ? " past" : "");
   div.dataset.slotId=slot.id;
   div.dataset.date=date;
   const title=document.createElement("div");
   title.className="slot-title";
-  title.innerHTML=`<span>${slot.label}</span>`;
-  const del=document.createElement("button");
-  del.textContent="✕";
-  del.title="Delete slot";
-  del.onclick=async()=>{ if(confirm(`Delete ${slot.label}? Plates move to buffer`)){ await api(`/api/slots/${slot.id}`,{method:"DELETE"}); loadCalendar(); } };
-  // don't allow delete if only 2 default? allow but warn
-  title.appendChild(del);
+  title.innerHTML=`<span>${slot.label}</span>` + (past ? ` <span class="past-label">locked</span>` : "");
+  if(!past){
+    const del=document.createElement("button");
+    del.textContent="✕";
+    del.title="Delete slot";
+    del.onclick=async()=>{ if(confirm(`Delete ${slot.label}? Plates move to buffer`)){ try{ await api(`/api/slots/${slot.id}`,{method:"DELETE"}); loadCalendar(); }catch(e){ alert(e.message);} } };
+    title.appendChild(del);
+  }
   div.appendChild(title);
   const platesDiv=document.createElement("div");
   platesDiv.className="plates";
   slot.plates.forEach(p=> platesDiv.appendChild(renderPlate(p, date, slot.id)));
   div.appendChild(platesDiv);
-  // add plate form
-  const add=document.createElement("div");
-  add.className="add-plate";
-  add.innerHTML=`<input class="plate-title-input" placeholder="Add plate to ${slot.label}" data-date="${date}" data-slot="${slot.id}"><input class="plate-note-input" placeholder="note"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
-  const titleIn=add.querySelector(".plate-title-input");
-  const noteIn=add.querySelector(".plate-note-input");
-  const btn=add.querySelector("button");
-  const ac=add.querySelector(".autocomplete");
-  btn.onclick=()=> addPlateFromInput(titleIn, noteIn, date, slot.id, ac);
-  setupAutocomplete(titleIn, ac);
-  div.appendChild(add);
-  // DnD
-  div.addEventListener("dragover", e=>{ e.preventDefault(); div.classList.add("drag-over"); });
-  div.addEventListener("dragleave", ()=> div.classList.remove("drag-over"));
-  div.addEventListener("drop", e=>{
-    e.preventDefault(); div.classList.remove("drag-over");
-    if(state.draggingId) movePlate(state.draggingId, date, slot.id);
-  });
+  if(!past){
+    const add=document.createElement("div");
+    add.className="add-plate";
+    add.innerHTML=`<input class="plate-title-input" placeholder="Add plate to ${slot.label}" data-date="${date}" data-slot="${slot.id}"><input class="plate-note-input" placeholder="note"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
+    const titleIn=add.querySelector(".plate-title-input");
+    const noteIn=add.querySelector(".plate-note-input");
+    const btn=add.querySelector("button");
+    const ac=add.querySelector(".autocomplete");
+    btn.onclick=()=> addPlateFromInput(titleIn, noteIn, date, slot.id, ac);
+    setupAutocomplete(titleIn, ac);
+    div.appendChild(add);
+    div.addEventListener("dragover", e=>{ e.preventDefault(); div.classList.add("drag-over"); });
+    div.addEventListener("dragleave", ()=> div.classList.remove("drag-over"));
+    div.addEventListener("drop", e=>{
+      e.preventDefault(); div.classList.remove("drag-over");
+      if(state.draggingId) movePlate(state.draggingId, date, slot.id);
+    });
+  }
   return div;
 }
 function renderPlate(p, date, slotId){
+  const past = isPast(p.date);
   const div=document.createElement("div");
-  div.className="plate";
-  div.draggable=true;
+  div.className="plate" + (past ? " past" : "");
+  div.draggable = !past;
   div.dataset.plateId=p.id;
   div.innerHTML=`
-    <div class="plate-title">${escapeHtml(p.title)}</div>
+    <div class="plate-title">${escapeHtml(p.title)}${past? ' <span class="past-label">(past)</span>':''}</div>
     ${p.note?`<div class="plate-note">${escapeHtml(p.note)}</div>`:""}
     <div class="plate-meta">
-      <button class="vote-btn ${p.my_vote===1?'active-up':''}" data-v="1">▲ ${p.up}</button>
-      <button class="vote-btn ${p.my_vote===-1?'active-down':''}" data-v="-1">▼ ${p.down}</button>
+      <button class="vote-btn ${p.my_vote===1?'active-up':''}" data-v="1" ${past?'disabled title="past locked"':''}>▲ ${p.up}</button>
+      <button class="vote-btn ${p.my_vote===-1?'active-down':''}" data-v="-1" ${past?'disabled title="past locked"':''}>▼ ${p.down}</button>
       <span style="margin-left:6px">score ${p.score}</span>
       <span style="margin-left:auto; font-size:11px; color:#777">#${p.id} by ${p.proposed_by}</span>
     </div>
   `;
   const actions=document.createElement("div");
   actions.className="plate-actions";
-  // only creator can edit/delete - check state.user.id
-  if(state.user && p.proposed_by===state.user.id){
+  // only creator can edit/delete - but past locked hides them
+  if(state.user && p.proposed_by===state.user.id && !past){
     const edit=document.createElement("button");
     edit.textContent="Edit";
     edit.onclick=async()=>{
@@ -363,25 +370,31 @@ function renderPlate(p, date, slotId){
     };
     const del=document.createElement("button");
     del.textContent="Delete";
-    del.onclick=async()=>{ if(confirm("Delete plate?")){ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); if(state.selectedDay) openModal(state.selectedDay); } };
+    del.onclick=async()=>{ if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message);} } };
     actions.appendChild(edit); actions.appendChild(del);
+  } else if(past){
+    const lock=document.createElement("span");
+    lock.className="past-label";
+    lock.textContent="locked (past)";
+    actions.appendChild(lock);
   }
   div.appendChild(actions);
-  // vote handlers
-  div.querySelectorAll(".vote-btn").forEach(btn=>{
-    btn.onclick=async(e)=>{
-      e.stopPropagation();
-      const v=parseInt(btn.dataset.v);
-      const newVal = p.my_vote===v ? 0 : v;
-      try{ await api(`/api/plates/${p.id}/vote`,{method:"POST", body:JSON.stringify({value:newVal})}); loadCalendar(); if(state.selectedDay) refreshModal(); }catch(err){ alert(err.message); }
-    };
-  });
-  div.addEventListener("dragstart", e=>{
-    state.draggingId=p.id;
-    div.classList.add("dragging");
-    e.dataTransfer.effectAllowed="move";
-  });
-  div.addEventListener("dragend", ()=>{ state.draggingId=null; div.classList.remove("dragging"); });
+  if(!past){
+    div.querySelectorAll(".vote-btn").forEach(btn=>{
+      btn.onclick=async(e)=>{
+        e.stopPropagation();
+        const v=parseInt(btn.dataset.v);
+        const newVal = p.my_vote===v ? 0 : v;
+        try{ await api(`/api/plates/${p.id}/vote`,{method:"POST", body:JSON.stringify({value:newVal})}); loadCalendar(); if(state.selectedDay) refreshModal(); }catch(err){ alert(err.message); }
+      };
+    });
+    div.addEventListener("dragstart", e=>{
+      state.draggingId=p.id;
+      div.classList.add("dragging");
+      e.dataTransfer.effectAllowed="move";
+    });
+    div.addEventListener("dragend", ()=>{ state.draggingId=null; div.classList.remove("dragging"); });
+  }
   return div;
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
@@ -413,11 +426,13 @@ function renderMonthly(){
   for(let i=0;i<startPad;i++){ const empty=document.createElement("div"); grid.appendChild(empty); }
   state.calendar.days.forEach(day=>{
     const cell=document.createElement("div");
-    cell.className="month-cell";
+    const past = isPast(day.date);
+    cell.className="month-cell" + (past ? " past" : "");
     const d=parseDate(day.date);
     if(fmtDate(new Date())===day.date) cell.classList.add("today");
     let mini = day.slots.map(s=> `${s.label}: ${s.plates.length}`).join(" | ");
     if(day.day_buffer.length) mini += ` | buffer:${day.day_buffer.length}`;
+    if(past) mini += ` <span class="past-label">(locked)</span>`;
     cell.innerHTML=`<strong>${d.getDate()}</strong><div class="mini-plates">${mini||"empty"}</div>`;
     cell.onclick=()=> openModal(day.date);
     grid.appendChild(cell);
@@ -429,10 +444,11 @@ function renderDaily(){
   c.innerHTML="";
   if(!state.calendar || state.calendar.days.length===0) return;
   const day=state.calendar.days[0];
+  const past = isPast(day.date);
   const wrap=document.createElement("div");
   wrap.className="daily-container";
   const hdr=document.createElement("h2");
-  hdr.textContent=day.date;
+  hdr.textContent=day.date + (past ? " — past (locked)" : "");
   hdr.style.cursor="pointer"; hdr.onclick=()=> openModal(day.date);
   wrap.appendChild(hdr);
   day.slots.forEach(slot=>{
@@ -442,30 +458,32 @@ function renderDaily(){
   if(day.day_buffer.length>0){
     const buf=document.createElement("div");
     buf.className="buffer-zone";
-    buf.innerHTML="<h3>Day buffer</h3>";
+    buf.innerHTML=`<h3>Day buffer ${past?'<span class="past-label">(locked)</span>':''}</h3>`;
     const pd=document.createElement("div");
     pd.className="plates";
     day.day_buffer.forEach(p=> pd.appendChild(renderPlate(p, day.date, null)));
     buf.appendChild(pd);
-    buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
-    buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
-    buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+    if(!past){
+      buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
+      buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
+      buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+    }
     wrap.appendChild(buf);
   }
-  // per_day add
-  const addWrap=document.createElement("div");
-  addWrap.className="add-slot";
-  addWrap.innerHTML=`<input id="daily-new-slot" placeholder="Add new meal for ${day.date}"><button id="daily-add-slot">Add slot</button>`;
-  wrap.appendChild(addWrap);
-  setTimeout(()=>{
-    const ib=document.getElementById("daily-new-slot");
-    const bt=document.getElementById("daily-add-slot");
-    if(bt) bt.onclick=async()=>{
-      const label=ib.value.trim(); if(!label) return;
-      await api("/api/slots",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, date:day.date, label})});
-      loadCalendar();
-    };
-  },0);
+  if(!past){
+    const addWrap=document.createElement("div");
+    addWrap.className="add-slot";
+    addWrap.innerHTML=`<input id="daily-new-slot" placeholder="Add new meal for ${day.date}"><button id="daily-add-slot">Add slot</button>`;
+    wrap.appendChild(addWrap);
+    setTimeout(()=>{
+      const ib=document.getElementById("daily-new-slot");
+      const bt=document.getElementById("daily-add-slot");
+      if(bt) bt.onclick=async()=>{
+        const label=ib.value.trim(); if(!label) return;
+        try{ await api("/api/slots",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, date:day.date, label})}); loadCalendar(); }catch(e){ alert(e.message); }
+      };
+    },0);
+  }
   c.appendChild(wrap);
 }
 
@@ -474,18 +492,27 @@ function openModal(date){
   state.selectedDay=date;
   const modal=document.getElementById("day-modal");
   modal.style.display="flex";
-  document.getElementById("modal-date").textContent=date;
+  const past=isPast(date);
+  document.getElementById("modal-date").textContent=date + (past ? " — past (read-only)" : "");
+  // disable add-slot / add-buffer UI for past
+  document.getElementById("modal-buffer-add").disabled=past;
+  document.getElementById("modal-buffer-title").disabled=past;
+  document.getElementById("modal-buffer-note").disabled=past;
+  document.getElementById("new-slot-label").disabled=past;
+  document.getElementById("add-slot-btn").disabled=past;
+  if(past){
+    document.getElementById("modal-buffer").classList.add("past");
+  } else {
+    document.getElementById("modal-buffer").classList.remove("past");
+  }
   refreshModal();
 }
 function closeModal(){ document.getElementById("day-modal").style.display="none"; state.selectedDay=null; }
 function refreshModal(){
   if(!state.selectedDay || !state.calendar) return;
   let day = state.calendar.days.find(d=>d.date===state.selectedDay);
-  // if modal date out of current range, fetch single day? For now reload calendar to include date
+  const past = isPast(state.selectedDay);
   if(!day){
-    // fetch that day specifically by adjusting anchor and reloading? simple: reload if not found, keep modal
-    // attempt to show fetch via temp: we can just create placeholder and fetch on demand
-    // Instead, fetch calendar for that single day and update modal directly via API
     fetchDayForModal(state.selectedDay);
     return;
   }
@@ -497,12 +524,16 @@ function refreshModal(){
   });
   const bufPlates=document.getElementById("modal-buffer-plates");
   bufPlates.innerHTML="";
-  // show day_buffer in modal
   day.day_buffer.forEach(p=> bufPlates.appendChild(renderPlate(p, day.date, null)));
   const modalBuf=document.getElementById("modal-buffer");
-  modalBuf.addEventListener("dragover", e=>{ e.preventDefault(); modalBuf.classList.add("drag-over"); });
-  modalBuf.addEventListener("dragleave", ()=> modalBuf.classList.remove("drag-over"));
-  modalBuf.addEventListener("drop", e=>{ e.preventDefault(); modalBuf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+  // clone to avoid stacking listeners, but simple guard
+  modalBuf.replaceWith(modalBuf.cloneNode(true));
+  const newBuf=document.getElementById("modal-buffer");
+  if(!past){
+    newBuf.addEventListener("dragover", e=>{ e.preventDefault(); newBuf.classList.add("drag-over"); });
+    newBuf.addEventListener("dragleave", ()=> newBuf.classList.remove("drag-over"));
+    newBuf.addEventListener("drop", e=>{ e.preventDefault(); newBuf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+  }
 }
 async function fetchDayForModal(date){
   try{
@@ -521,11 +552,11 @@ async function fetchDayForModal(date){
 
 // --- add plate ---
 async function addPlateFromInput(titleIn, noteIn, date, slotId, acEl){
+  if(date && isPast(date)){ alert("past days not modifiable"); return; }
   const title=titleIn.value.trim();
   const note=noteIn.value.trim();
   if(!title){ titleIn.focus(); return; }
   const body={house_id: state.currentHouseId, title, note, date: date||null, slot_id: slotId||null};
-  // if slotId but date null? handled by backend
   try{
     await api("/api/plates",{method:"POST", body:JSON.stringify(body)});
     titleIn.value=""; noteIn.value=""; if(acEl) acEl.style.display="none";
@@ -534,13 +565,29 @@ async function addPlateFromInput(titleIn, noteIn, date, slotId, acEl){
   }catch(e){ alert(e.message); }
 }
 async function movePlate(plateId, toDate, toSlotId){
+  // quick client guard; server is authoritative
+  const dragging = state.calendar ? findPlateDate(plateId) : null;
+  if(dragging && isPast(dragging)){ alert("past days not modifiable (source)"); return; }
+  if(toDate && isPast(toDate)){ alert("past days not modifiable (target)"); return; }
   try{
     await api(`/api/plates/${plateId}/move`,{method:"POST", body:JSON.stringify({to_date: toDate||null, to_slot_id: toSlotId||null})});
     loadCalendar();
     if(state.selectedDay) refreshModal();
   }catch(e){ alert(e.message); }
 }
+function findPlateDate(plateId){
+  if(!state.calendar) return null;
+  for(const day of state.calendar.days){
+    for(const slot of day.slots){
+      if(slot.plates.some(p=>p.id===plateId)) return day.date;
+    }
+    if(day.day_buffer.some(p=>p.id===plateId)) return day.date;
+  }
+  for(const p of state.calendar.global_buffer) if(p.id===plateId) return null;
+  return null;
+}
 async function addSlot(){
+  if(isPast(state.selectedDay)){ alert("past days not modifiable"); return; }
   const label=document.getElementById("new-slot-label").value.trim();
   if(!label || !state.selectedDay) return;
   try{

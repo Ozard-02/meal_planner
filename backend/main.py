@@ -70,6 +70,18 @@ class VoteIn(BaseModel):
 def gen_invite():
     return secrets.token_hex(3).upper()
 
+def today_iso():
+    # use UTC date to avoid server local drift — past = < today
+    return datetime.datetime.utcnow().date().isoformat()
+
+def is_past(date_str: Optional[str]) -> bool:
+    if not date_str:
+        return False  # global buffer never past
+    try:
+        return date_str < today_iso()
+    except:
+        return False
+
 def ensure_slots(db: Session, house_id: int, date: str):
     existing = db.query(models.Slot).filter(models.Slot.house_id==house_id, models.Slot.date==date).all()
     if not existing:
@@ -265,6 +277,8 @@ def create_slot(data: SlotCreateIn, user: models.User = Depends(get_current_user
         datetime.datetime.strptime(data.date, "%Y-%m-%d")
     except:
         raise HTTPException(400, "invalid date")
+    if is_past(data.date):
+        raise HTTPException(400, "past days not modifiable")
     # check dup
     if db.query(models.Slot).filter(models.Slot.house_id==data.house_id, models.Slot.date==data.date, models.Slot.label==label).first():
         raise HTTPException(400, "slot label already exists for this date")
@@ -282,6 +296,8 @@ def delete_slot(slot_id: int, user: models.User = Depends(get_current_user), db:
     if not s:
         raise HTTPException(404, "not found")
     require_membership(user.id, s.house_id, db)
+    if is_past(s.date):
+        raise HTTPException(400, "past days not modifiable")
     # move plates in this slot to per_day buffer or global buffer?
     plates = db.query(models.Plate).filter(models.Plate.slot_id==slot_id).all()
     for p in plates:
@@ -317,6 +333,8 @@ def create_plate(data: PlateCreateIn, user: models.User = Depends(get_current_us
             except:
                 raise HTTPException(400, "invalid date")
         # date None => global buffer, date set => per_day buffer
+    if is_past(date):
+        raise HTTPException(400, "past days not modifiable")
     p = models.Plate(house_id=data.house_id, title=title, note=data.note or "", date=date, slot_id=slot_id, proposed_by=user.id)
     db.add(p)
     db.commit()
@@ -330,6 +348,8 @@ def update_plate(plate_id: int, data: PlateUpdateIn, user: models.User = Depends
     if not p:
         raise HTTPException(404, "not found")
     require_membership(user.id, p.house_id, db)
+    if is_past(p.date):
+        raise HTTPException(400, "past days not modifiable")
     if p.proposed_by != user.id:
         raise HTTPException(403, "only creator can edit")
     if data.title is not None:
@@ -350,6 +370,8 @@ def move_plate(plate_id: int, data: MoveIn, user: models.User = Depends(get_curr
     if not p:
         raise HTTPException(404, "not found")
     require_membership(user.id, p.house_id, db)
+    if is_past(p.date):
+        raise HTTPException(400, "past days not modifiable")
     # any member can move, not only creator (per spec)
     to_slot_id = data.to_slot_id
     to_date = data.to_date
@@ -368,6 +390,8 @@ def move_plate(plate_id: int, data: MoveIn, user: models.User = Depends(get_curr
             except:
                 raise HTTPException(400, "invalid to_date")
         # to_date None => global buffer, else per_day buffer
+    if is_past(to_date):
+        raise HTTPException(400, "past days not modifiable")
     p.slot_id = to_slot_id
     p.date = to_date
     db.commit()
@@ -381,6 +405,8 @@ def delete_plate(plate_id: int, user: models.User = Depends(get_current_user), d
     if not p:
         raise HTTPException(404, "not found")
     require_membership(user.id, p.house_id, db)
+    if is_past(p.date):
+        raise HTTPException(400, "past days not modifiable")
     if p.proposed_by != user.id:
         raise HTTPException(403, "only creator can delete")
     db.query(models.Vote).filter(models.Vote.plate_id==plate_id).delete()
@@ -395,6 +421,8 @@ def vote_plate(plate_id: int, data: VoteIn, user: models.User = Depends(get_curr
     if not p:
         raise HTTPException(404, "not found")
     require_membership(user.id, p.house_id, db)
+    if is_past(p.date):
+        raise HTTPException(400, "past days not modifiable")
     if data.value not in (-1,0,1):
         raise HTTPException(400, "value must be -1,0,1")
     existing = db.query(models.Vote).filter(models.Vote.plate_id==plate_id, models.Vote.user_id==user.id).first()
