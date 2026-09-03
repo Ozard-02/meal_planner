@@ -896,11 +896,13 @@ async function toggleBuffer(e){
 async function loadCalendar(){
   if(!state.currentHouseId) return;
   const {from,to,label}=rangeForView();
-  document.getElementById("range-label").textContent=label;
+  const rl=document.getElementById("range-label");
+  if(rl) rl.textContent=label;
   try{
     const data=await api(`/api/calendar?house_id=${state.currentHouseId}&from=${from}&to=${to}`);
     state.calendar=data;
-    document.getElementById("house-invite").textContent=`code: ${data.house.invite_code}`;
+    const hi=document.getElementById("house-invite");
+    if(hi) hi.textContent=`code: ${data.house.invite_code||""}`;
     const bt=document.getElementById("buffer-toggle");
     if(bt){
       const isDaily=data.house.buffer_mode==="per_day";
@@ -916,9 +918,10 @@ async function loadCalendar(){
     }
     const sbt=document.getElementById("settings-buffer-toggle");
     if(sbt) sbt.checked = data.house.buffer_mode==="per_day";
-    document.getElementById("buffer-mode-label").textContent=`(${data.house.buffer_mode})`;
+    const bml=document.getElementById("buffer-mode-label");
+    if(bml) bml.textContent=`(${data.house.buffer_mode})`;
     const sel=document.getElementById("house-select");
-    if(sel.value!=String(state.currentHouseId)) sel.value=state.currentHouseId;
+    if(sel && sel.value!=String(state.currentHouseId)) sel.value=state.currentHouseId;
     render();
   }catch(e){
     console.error(e);
