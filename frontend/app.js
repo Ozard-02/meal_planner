@@ -185,7 +185,8 @@ function bindEvents(){
     refreshSettingsHouse();
   };
   document.getElementById("house-select").onchange=e=>{ state.currentHouseId=parseInt(e.target.value); saveState(); loadCalendar(); loadHistory(); };
-  document.getElementById("buffer-toggle").onchange=toggleBuffer;
+  const btb=document.getElementById("buffer-toggle");
+  if(btb) btb.onclick=toggleBuffer;
   document.querySelectorAll(".view-btn").forEach(b=> b.onclick=()=>{ state.view=b.dataset.view; saveState(); updateViewButtons(); loadCalendar(); });
   document.getElementById("prev-btn").onclick=()=>{ shift(-1); };
   document.getElementById("next-btn").onclick=()=>{ shift(1); };
@@ -255,7 +256,18 @@ function bindEvents(){
   const sh=document.getElementById("settings-save-house");
   if(sh) sh.onclick=saveHouseName;
   const bt=document.getElementById("settings-buffer-toggle");
-  if(bt) bt.onchange=e=>{ const v=e.target.checked?"per_day":"global"; api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode:v})}).then(loadCalendar).catch(alert); document.getElementById("buffer-toggle").checked=e.target.checked; };
+  if(bt) bt.onchange=e=>{
+    const v=e.target.checked?"per_day":"global";
+    api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode:v})}).then(loadCalendar).catch(alert);
+    const btb=document.getElementById("buffer-toggle");
+    if(btb && btb.tagName==="BUTTON"){
+      const isDaily=v==="per_day";
+      btb.classList.toggle("active", isDaily);
+      btb.style.background=isDaily?"var(--accent)":"";
+      btb.style.color=isDaily?"var(--accent-fg)":"";
+      btb.style.borderColor=isDaily?"var(--accent)":"var(--border)";
+    }
+  };
   const ci=document.getElementById("copy-invite");
   if(ci) ci.onclick=()=>{
     const code=document.getElementById("settings-invite").textContent;
@@ -460,13 +472,18 @@ function shift(dir){
   loadCalendar();
 }
 async function toggleBuffer(e){
-  const mode=e.target.checked?"per_day":"global";
+  const isButton = e.target.tagName==="BUTTON";
+  const current = state.calendar?.house?.buffer_mode || "global";
+  const newMode = isButton ? (current==="global"?"per_day":"global") : (e.target.checked?"per_day":"global");
   try{
-    await api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode})});
-    loadCalendar();
+    await api(`/api/houses/${state.currentHouseId}/buffer`,{method:"PUT", body:JSON.stringify({mode:newMode})});
+    await loadCalendar();
     const sb=document.getElementById("settings-buffer-toggle");
-    if(sb) sb.checked=e.target.checked;
-  }catch(err){ alert(err.message); e.target.checked=!e.target.checked; }
+    if(sb) sb.checked=newMode==="per_day";
+  }catch(err){
+    alert(err.message);
+    if(!isButton) e.target.checked=!e.target.checked;
+  }
 }
 async function loadCalendar(){
   if(!state.currentHouseId) return;
@@ -477,7 +494,19 @@ async function loadCalendar(){
     state.calendar=data;
     document.getElementById("house-invite").textContent=`code: ${data.house.invite_code}`;
     const bt=document.getElementById("buffer-toggle");
-    if(bt) bt.checked = data.house.buffer_mode==="per_day";
+    if(bt){
+      const isDaily=data.house.buffer_mode==="per_day";
+      if(bt.tagName==="BUTTON"){
+        bt.classList.toggle("active", isDaily);
+        bt.textContent="daily";
+        // keep button with just "daily" as requested, active shows state via accent
+        bt.style.background = isDaily ? "var(--accent)" : "";
+        bt.style.color = isDaily ? "var(--accent-fg)" : "";
+        bt.style.borderColor = isDaily ? "var(--accent)" : "var(--border)";
+      } else {
+        bt.checked=isDaily;
+      }
+    }
     const sbt=document.getElementById("settings-buffer-toggle");
     if(sbt) sbt.checked = data.house.buffer_mode==="per_day";
     document.getElementById("buffer-mode-label").textContent=`(${data.house.buffer_mode})`;

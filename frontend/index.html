@@ -8,9 +8,11 @@
 </head>
 <body>
 <header>
-  <h1>🍝 Lavagna Cibo</h1>
+  <div style="display:flex; align-items:center; gap:12px">
+    <h1>🍝 Lavagna Cibo</h1>
+    <span id="user-info" style="font-size:14px; color:var(--muted); font-weight:500"></span>
+  </div>
   <div id="header-actions">
-    <span id="user-info"></span>
     <button id="settings-btn" style="display:none">⚙ Settings</button>
     <button id="logout-btn" style="display:none">Logout</button>
   </div>
@@ -60,7 +62,6 @@
     <div class="house-switcher">
       <select id="house-select"></select>
       <span id="house-invite"></span>
-      <label style="margin-left:12px"><input type="checkbox" id="buffer-toggle"> day-specific buffer</label>
       <button id="manage-houses-btn" style="margin-left:8px; padding:4px 8px; font-size:12px">Houses</button>
     </div>
     <div class="view-switcher">
@@ -82,7 +83,10 @@
 
   <div id="buffer-history-row">
     <div id="global-buffer" class="buffer-zone">
-      <h3>Buffer <small>(drag here for unassigned)</small> <small id="buffer-mode-label"></small></h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <h3 style="margin:0">Buffer <small>(drag here for unassigned)</small> <small id="buffer-mode-label"></small></h3>
+        <button id="buffer-toggle" style="padding:4px 12px; font-size:12px; border:1px solid var(--border)" title="Toggle daily / global buffer">daily</button>
+      </div>
       <div class="buffer-desc">Global shared across all days — drag plates here to keep as ideas</div>
       <div id="global-buffer-plates" class="plates"></div>
       <div class="add-plate">
