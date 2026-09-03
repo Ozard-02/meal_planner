@@ -57,3 +57,7 @@ Thumbs.db
 
 # --- app specific ---
 /tmp/
+
+# --- docs — keep only README ---
+*.md
+!README.md

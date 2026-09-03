@@ -11,7 +11,8 @@ let state = {
   selectedDay: null,
   authMode: "login",
   history: [],
-  historyVisible: false,
+  historyVisible: true,
+  draggingHistory: null,
 };
 
 function headers() {
@@ -129,7 +130,7 @@ function bindEvents(){
   const gb=document.getElementById("global-buffer");
   gb.addEventListener("dragover", e=>{ e.preventDefault(); gb.classList.add("drag-over"); });
   gb.addEventListener("dragleave", ()=> gb.classList.remove("drag-over"));
-  gb.addEventListener("drop", e=>{ e.preventDefault(); gb.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, null, null); });
+  gb.addEventListener("drop", e=>{ e.preventDefault(); gb.classList.remove("drag-over"); handleDrop(null, null); });
   // history
   const hq=document.getElementById("history-q");
   const ht=document.getElementById("history-tag");
@@ -362,8 +363,19 @@ function renderHistory(){
   state.history.forEach(entry=>{
     const div=document.createElement("div");
     div.className="history-item";
+    div.draggable=true;
+    div.title="Drag to duplicate to any meal/buffer (history stays)";
+    div.style.cursor="grab";
     const tagsHtml=entry.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
     div.innerHTML=`<div><strong>${escapeHtml(entry.title)}</strong> <span style="font-size:11px;color:#777">×${entry.count}</span><div style="font-size:11px;color:#555">${tagsHtml} ${entry.example_note?escapeHtml(entry.example_note):""}</div></div>`;
+    div.addEventListener("dragstart", e=>{
+      state.draggingHistory=entry;
+      state.draggingId=null;
+      div.classList.add("dragging");
+      e.dataTransfer.effectAllowed="copy";
+      e.dataTransfer.setData("text/plain", entry.title);
+    });
+    div.addEventListener("dragend", ()=>{ state.draggingHistory=null; div.classList.remove("dragging"); });
     const btn=document.createElement("button");
     btn.textContent="Add to buffer";
     btn.onclick=async()=>{
@@ -382,6 +394,20 @@ function renderHistory(){
     div.appendChild(wrap);
     list.appendChild(div);
   });
+}
+async function handleDrop(targetDate, targetSlotId){
+  if(state.draggingHistory){
+    const entry=state.draggingHistory;
+    state.draggingHistory=null;
+    if(targetDate && isPast(targetDate)){ alert("past days not modifiable"); return; }
+    try{
+      await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, note:entry.example_note||"", tags:entry.tags.join(","), date:targetDate||null, slot_id:targetSlotId||null})});
+      loadCalendar(); loadHistory();
+      if(state.selectedDay) refreshModal();
+    }catch(e){ alert(e.message); }
+  } else if(state.draggingId){
+    await movePlate(state.draggingId, targetDate, targetSlotId);
+  }
 }
 
 function renderWeekly(){
@@ -417,7 +443,7 @@ function renderWeekly(){
       if(!past){
         buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
         buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
-        buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+        buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); handleDrop(day.date, null); });
       }
       col.appendChild(buf);
     }
@@ -477,7 +503,7 @@ function renderSlot(slot, date){
     div.addEventListener("dragleave", ()=> div.classList.remove("drag-over"));
     div.addEventListener("drop", e=>{
       e.preventDefault(); div.classList.remove("drag-over");
-      if(state.draggingId) movePlate(state.draggingId, date, slot.id);
+      handleDrop(date, slot.id);
     });
   }
   return div;
@@ -536,6 +562,7 @@ function renderPlate(p, date, slotId){
     });
     div.addEventListener("dragstart", e=>{
       state.draggingId=p.id;
+      state.draggingHistory=null;
       div.classList.add("dragging");
       e.dataTransfer.effectAllowed="move";
     });
@@ -608,7 +635,7 @@ function renderDaily(){
     if(!past){
       buf.addEventListener("dragover", e=>{ e.preventDefault(); buf.classList.add("drag-over"); });
       buf.addEventListener("dragleave", ()=> buf.classList.remove("drag-over"));
-      buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+      buf.addEventListener("drop", e=>{ e.preventDefault(); buf.classList.remove("drag-over"); handleDrop(day.date, null); });
     }
     wrap.appendChild(buf);
   }
@@ -801,7 +828,7 @@ function refreshModal(){
   if(!past){
     newBuf.addEventListener("dragover", e=>{ e.preventDefault(); newBuf.classList.add("drag-over"); });
     newBuf.addEventListener("dragleave", ()=> newBuf.classList.remove("drag-over"));
-    newBuf.addEventListener("drop", e=>{ e.preventDefault(); newBuf.classList.remove("drag-over"); if(state.draggingId) movePlate(state.draggingId, day.date, null); });
+    newBuf.addEventListener("drop", e=>{ e.preventDefault(); newBuf.classList.remove("drag-over"); handleDrop(day.date, null); });
   }
 }
 async function fetchDayForModal(date){
