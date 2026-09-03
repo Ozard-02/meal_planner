@@ -424,7 +424,7 @@ def get_calendar(house_id: int = Query(...), from_date: str = Query(..., alias="
         days.append({"date": d, "slots": day_slots, "day_buffer": day_buf})
     glob = [serialize_plate(p) for p in global_buffer]
     glob.sort(key=lambda x: (-x["score"], x["created_at"] or ""))
-    return {"house": {"id": h.id, "name": h.name, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h)}, "days": days, "global_buffer": glob}
+    return {"house": {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h)}, "days": days, "global_buffer": glob}
 
 # --- slots ---
 @app.post("/api/slots")
