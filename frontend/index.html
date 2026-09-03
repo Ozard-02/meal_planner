@@ -79,37 +79,39 @@
   <div id="monthly-view" style="display:none"></div>
   <div id="daily-view" style="display:none"></div>
 
-  <div id="global-buffer" class="buffer-zone">
-    <h3>Buffer <small>(drag here for unassigned)</small> <small id="buffer-mode-label"></small></h3>
-    <div class="buffer-desc">Global shared across all days — drag plates here to keep as ideas</div>
-    <div id="global-buffer-plates" class="plates"></div>
-    <div class="add-plate">
-      <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="">
-      <input class="plate-note-input" placeholder="note (optional)">
-      <input class="plate-tags-input" placeholder="tags: fish, meat, dessert">
-      <button class="plate-add-btn">Add</button>
-      <div class="autocomplete"></div>
-    </div>
-  </div>
-
-  <!-- HISTORY near global buffer -->
-  <div id="history-section" class="card" style="margin:20px">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
-      <h3 style="margin:0">History — all plates <small id="history-count"></small></h3>
-      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
-        <input id="history-q" placeholder="search title" style="width:160px">
-        <input id="history-tag" placeholder="filter tag" style="width:120px">
-        <select id="history-sort">
-          <option value="name">Sort: name A-Z</option>
-          <option value="recent">Sort: recent</option>
-          <option value="count">Sort: most used</option>
-        </select>
-        <button id="history-refresh">↻</button>
-        <button id="history-toggle">Expand</button>
+  <div id="buffer-history-row">
+    <div id="global-buffer" class="buffer-zone">
+      <h3>Buffer <small>(drag here for unassigned)</small> <small id="buffer-mode-label"></small></h3>
+      <div class="buffer-desc">Global shared across all days — drag plates here to keep as ideas</div>
+      <div id="global-buffer-plates" class="plates"></div>
+      <div class="add-plate">
+        <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="">
+        <input class="plate-note-input" placeholder="note (optional)">
+        <input class="plate-tags-input" placeholder="tags: fish, meat, dessert">
+        <button class="plate-add-btn">Add</button>
+        <div class="autocomplete"></div>
       </div>
     </div>
-    <div id="history-list" style="display:none; margin-top:12px; max-height:320px; overflow:auto"></div>
-    <div id="history-hint" style="font-size:12px; color:#666; margin-top:6px">Sortable by name — tags like fish, meat, first, dessert are editable per plate.</div>
+
+    <!-- HISTORY beside buffer -->
+    <div id="history-section" class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+        <h3 style="margin:0">History — all plates <small id="history-count"></small></h3>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap">
+          <input id="history-q" placeholder="search title" style="width:160px">
+          <input id="history-tag" placeholder="filter tag" style="width:120px">
+          <select id="history-sort">
+            <option value="name">Sort: name A-Z</option>
+            <option value="recent">Sort: recent</option>
+            <option value="count">Sort: most used</option>
+          </select>
+          <button id="history-refresh">↻</button>
+          <button id="history-toggle">Expand</button>
+        </div>
+      </div>
+      <div id="history-list" style="display:none; margin-top:12px; max-height:320px; overflow:auto"></div>
+      <div id="history-hint" style="font-size:12px; color:#666; margin-top:6px">Sortable by name — tags like fish, meat, first, dessert are editable per plate.</div>
+    </div>
   </div>
 </section>
 

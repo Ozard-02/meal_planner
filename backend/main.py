@@ -602,7 +602,8 @@ def autocomplete(house_id: int = Query(...), q: str = Query("", alias="query"), 
     if not q:
         return []
     pattern = q.lower() + "%"
-    rows = db.query(models.Plate.title, func.count(models.Plate.id).label("cnt"), func.max(models.Plate.created_at).label("last")).filter(models.Plate.house_id==house_id, func.lower(models.Plate.title).like(pattern)).group_by(models.Plate.title).order_by(func.count(models.Plate.id).desc(), func.max(models.Plate.created_at).desc()).limit(limit).all()
+    # ponytail: case-insensitive distinct — group by lower(title), keep first casing via MIN(title)
+    rows = db.query(func.min(models.Plate.title).label("title"), func.count(models.Plate.id).label("cnt"), func.max(models.Plate.created_at).label("last")).filter(models.Plate.house_id==house_id, func.lower(models.Plate.title).like(pattern)).group_by(func.lower(models.Plate.title)).order_by(func.count(models.Plate.id).desc(), func.max(models.Plate.created_at).desc()).limit(limit).all()
     return [r[0] for r in rows]
 
 # --- history ---
@@ -612,14 +613,14 @@ def history(house_id: int = Query(...), sort: str = Query("name"), limit: int = 
     sort = sort if sort in ("name","recent","count") else "name"
     q = q.strip().lower()
     tag = tag.strip().lower()
-    # distinct titles with aggregated tags, count, last
+    # distinct titles case-insensitive — group by lower(title), keep original casing via MIN(title)
     query = db.query(
-        models.Plate.title,
+        func.min(models.Plate.title).label("title"),
         func.count(models.Plate.id).label("cnt"),
         func.max(models.Plate.created_at).label("last"),
         func.group_concat(models.Plate.tags, ",").label("tags_agg"),
         func.max(models.Plate.note).label("example_note")
-    ).filter(models.Plate.house_id==house_id).group_by(models.Plate.title)
+    ).filter(models.Plate.house_id==house_id).group_by(func.lower(models.Plate.title))
     if q:
         query = query.filter(func.lower(models.Plate.title).like(f"%{q}%"))
     rows = query.all()
