@@ -70,28 +70,40 @@ function applyTheme(){
   const th = localStorage.getItem("lavagna_theme") || "light";
   document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom");
   document.body.classList.add("theme-"+th);
-  // reset custom inline vars first
+  // reset custom inline vars on both html and body (body inline overrides class)
   const vars=["bg","fg","card","header","accent","accent-fg","muted","border"];
-  vars.forEach(v=> document.documentElement.style.removeProperty("--"+v));
+  vars.forEach(v=>{
+    document.documentElement.style.removeProperty("--"+v);
+    document.body.style.removeProperty("--"+v);
+  });
   if(th==="custom"){
-    const custom={};
     vars.forEach(v=>{
       const val=localStorage.getItem("lavagna_custom_"+v);
-      if(val) { custom[v]=val; document.documentElement.style.setProperty("--"+v, val); }
+      if(val){
+        document.documentElement.style.setProperty("--"+v, val);
+        document.body.style.setProperty("--"+v, val);
+      }
     });
-    // also ensure missing vars fallback to light
   } else {
-    // for presets, allow accent override from custom accent if set? keep preset accent unless custom accent set
     const accentOverride=localStorage.getItem("lavagna_custom_accent");
-    const preset=themePresets[th]||themePresets.light;
-    // if user has customized accent separately while on preset, apply it
     if(accentOverride && th!=="custom"){
       document.documentElement.style.setProperty("--accent", accentOverride);
-      // try to guess accent-fg
-      const isDark=parseInt(accentOverride.slice(1,3),16) < 128;
-      // keep preset accent-fg unless custom has it
+      document.body.style.setProperty("--accent", accentOverride);
       const cfg=localStorage.getItem("lavagna_custom_accent-fg");
-      if(cfg) document.documentElement.style.setProperty("--accent-fg", cfg);
+      if(cfg){
+        document.documentElement.style.setProperty("--accent-fg", cfg);
+        document.body.style.setProperty("--accent-fg", cfg);
+      } else {
+        // auto contrast for accent
+        const hex=accentOverride.replace("#","").trim();
+        if(hex.length===6){
+          const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+          const lum=(0.299*r+0.587*g+0.114*b)/255;
+          const fg=lum>0.5?"#222222":"#ffffff";
+          document.documentElement.style.setProperty("--accent-fg", fg);
+          document.body.style.setProperty("--accent-fg", fg);
+        }
+      }
     }
   }
   // sync UI
