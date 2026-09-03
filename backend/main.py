@@ -606,6 +606,28 @@ def autocomplete(house_id: int = Query(...), q: str = Query("", alias="query"), 
     rows = db.query(func.min(models.Plate.title).label("title"), func.count(models.Plate.id).label("cnt"), func.max(models.Plate.created_at).label("last")).filter(models.Plate.house_id==house_id, func.lower(models.Plate.title).like(pattern)).group_by(func.lower(models.Plate.title)).order_by(func.count(models.Plate.id).desc(), func.max(models.Plate.created_at).desc()).limit(limit).all()
     return [r[0] for r in rows]
 
+@app.get("/api/tags/autocomplete")
+def tags_autocomplete(house_id: int = Query(...), q: str = Query("", alias="query"), limit: int = 8, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_membership(user.id, house_id, db)
+    q = q.strip().lower()
+    if not q:
+        return []
+    # ponytail: tags are comma-separated lower strings — aggregate frequencies in Python (few hundred plates max)
+    rows = db.query(models.Plate.tags).filter(models.Plate.house_id==house_id).all()
+    freq={}
+    for (tags_str,) in rows:
+        if not tags_str:
+            continue
+        for t in tags_str.split(","):
+            tt=t.strip().lower()
+            if not tt:
+                continue
+            freq[tt]=freq.get(tt,0)+1
+    # filter prefix
+    matched=[(tag,cnt) for tag,cnt in freq.items() if tag.startswith(q)]
+    matched.sort(key=lambda x: (-x[1], x[0]))
+    return [tag for tag,cnt in matched[:limit]]
+
 # --- history ---
 @app.get("/api/plates/history")
 def history(house_id: int = Query(...), sort: str = Query("name"), limit: int = Query(100), q: str = Query(""), tag: str = Query(""), user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):

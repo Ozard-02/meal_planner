@@ -123,7 +123,9 @@ function bindEvents(){
   const gAc=document.querySelector("#global-buffer .autocomplete");
   if(gBtn) gBtn.onclick=()=> addPlateFromInput(gTitle,gNote,null,null,gAc,gTags);
   setupAutocomplete(gTitle,gAc);
+  setupTagsAutocomplete(gTags);
   setupAutocomplete(document.getElementById("modal-buffer-title"), document.getElementById("modal-buffer-ac"));
+  setupTagsAutocomplete(document.getElementById("modal-buffer-tags"));
   const gb=document.getElementById("global-buffer");
   gb.addEventListener("dragover", e=>{ e.preventDefault(); gb.classList.add("drag-over"); });
   gb.addEventListener("dragleave", ()=> gb.classList.remove("drag-over"));
@@ -135,7 +137,7 @@ function bindEvents(){
   const hr=document.getElementById("history-refresh");
   const hg=document.getElementById("history-toggle");
   if(hq) hq.addEventListener("input", debounce(loadHistory,300));
-  if(ht) ht.addEventListener("input", debounce(loadHistory,300));
+  if(ht) { ht.addEventListener("input", debounce(loadHistory,300)); setupTagsAutocomplete(ht); }
   if(hs) hs.addEventListener("change", loadHistory);
   if(hr) hr.onclick=loadHistory;
   if(hg) hg.onclick=()=>{
@@ -431,6 +433,7 @@ function renderWeekly(){
       const ac=add.querySelector(".autocomplete");
       btn.onclick=()=> addPlateFromInput(titleIn, noteIn, day.date, null, ac, tagsIn);
       setupAutocomplete(titleIn, ac);
+      setupTagsAutocomplete(tagsIn);
       col.appendChild(add);
     }
     c.appendChild(col);
@@ -468,6 +471,7 @@ function renderSlot(slot, date){
     const ac=add.querySelector(".autocomplete");
     btn.onclick=()=> addPlateFromInput(titleIn, noteIn, date, slot.id, ac, tagsIn);
     setupAutocomplete(titleIn, ac);
+    setupTagsAutocomplete(tagsIn);
     div.appendChild(add);
     div.addEventListener("dragover", e=>{ e.preventDefault(); div.classList.add("drag-over"); });
     div.addEventListener("dragleave", ()=> div.classList.remove("drag-over"));
@@ -889,5 +893,57 @@ function setupAutocomplete(input, acDiv){
   input.addEventListener("blur", ()=> setTimeout(()=> acDiv.style.display="none",200));
   input.addEventListener("focus", ()=>{
     if(acDiv.children.length>0) acDiv.style.display="block";
+  });
+}
+let tagsAcTimeout=null;
+function setupTagsAutocomplete(input, acDiv){
+  if(!input) return;
+  // create ac div if not provided
+  if(!acDiv){
+    acDiv=document.createElement("div");
+    acDiv.className="autocomplete";
+    acDiv.style.display="none";
+    // ensure parent is relative for absolute positioning
+    const parent=input.parentElement;
+    if(parent && getComputedStyle(parent).position==="static"){
+      parent.style.position="relative";
+    }
+    parent.appendChild(acDiv);
+  }
+  input.addEventListener("input", ()=>{
+    // last fragment after comma
+    const val=input.value;
+    const parts=val.split(",");
+    const q=parts[parts.length-1].trim();
+    if(tagsAcTimeout) clearTimeout(tagsAcTimeout);
+    if(!q){ acDiv.style.display="none"; return; }
+    tagsAcTimeout=setTimeout(async()=>{
+      try{
+        const res=await api(`/api/tags/autocomplete?house_id=${state.currentHouseId}&query=${encodeURIComponent(q)}&limit=8`);
+        if(res.length===0){ acDiv.style.display="none"; return; }
+        acDiv.innerHTML="";
+        res.forEach(t=>{
+          const d=document.createElement("div");
+          d.textContent=t;
+          d.onclick=()=>{
+            parts[parts.length-1]=" "+t;
+            // rebuild comma separated, trim leading spaces
+            let newVal=parts.map((p,i)=> i===parts.length-1 ? t : p.trim()).join(", ");
+            // keep trailing comma space for next tag?
+            if(!newVal.endsWith(", ")) newVal+=", ";
+            input.value=newVal;
+            acDiv.style.display="none";
+            input.focus();
+          };
+          acDiv.appendChild(d);
+        });
+        acDiv.style.display="block";
+      }catch(e){ acDiv.style.display="none"; }
+    },200);
+  });
+  input.addEventListener("blur", ()=> setTimeout(()=> acDiv.style.display="none",250));
+  input.addEventListener("focus", ()=>{
+    const val=input.value; const parts=val.split(","); const q=parts[parts.length-1].trim();
+    if(q && acDiv.children.length>0) acDiv.style.display="block";
   });
 }
