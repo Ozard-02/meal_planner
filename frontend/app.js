@@ -386,11 +386,24 @@ function renderHistory(){
     btn2.style.marginLeft="6px";
     btn2.onclick=async()=>{
       const today=todayISO();
-      // find today's slot first if exists else create via template? For quick, add to day buffer
       try{ await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, tags: entry.tags.join(","), date:today})}); loadCalendar(); }catch(e){ alert(e.message); }
     };
+    const btn3=document.createElement("button");
+    btn3.textContent="✕";
+    btn3.title="Remove from History permanently (deletes all plates with this title)";
+    btn3.style.marginLeft="6px";
+    btn3.style.background="#fee";
+    btn3.style.color="#c00";
+    btn3.style.borderColor="#fcc";
+    btn3.onclick=async(e)=>{
+      e.stopPropagation();
+      if(!confirm(`Remove "${entry.title}" from History permanently? This deletes all ${entry.count} plate(s) with this title in this house.`)) return;
+      try{ await api(`/api/plates/history?house_id=${state.currentHouseId}&title=${encodeURIComponent(entry.title)}`,{method:"DELETE"}); loadHistory(); loadCalendar(); }catch(err){ alert(err.message); }
+    };
+    btn3.addEventListener("mousedown", e=>e.stopPropagation());
     const wrap=document.createElement("div");
-    wrap.appendChild(btn); wrap.appendChild(btn2);
+    wrap.style.display="flex"; wrap.style.alignItems="center";
+    wrap.appendChild(btn); wrap.appendChild(btn2); wrap.appendChild(btn3);
     div.appendChild(wrap);
     list.appendChild(div);
   });

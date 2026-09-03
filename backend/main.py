@@ -552,6 +552,22 @@ def move_plate(plate_id: int, data: MoveIn, user: models.User = Depends(get_curr
     stats = plate_vote_stats(db, p.id, user.id)
     return {"id": p.id, "title": p.title, "note": p.note, "tags": tags_to_list(p.tags), "tags_str": p.tags, "date": p.date, "slot_id": p.slot_id, "proposed_by": p.proposed_by, **stats}
 
+@app.delete("/api/plates/history")
+def delete_history(house_id: int = Query(...), title: str = Query(...), user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_membership(user.id, house_id, db)
+    title = title.strip()
+    if not title:
+        raise HTTPException(400, "title required")
+    plates = db.query(models.Plate).filter(models.Plate.house_id==house_id, func.lower(models.Plate.title)==title.lower()).all()
+    if not plates:
+        raise HTTPException(404, "not found")
+    ids = [p.id for p in plates]
+    db.query(models.Vote).filter(models.Vote.plate_id.in_(ids)).delete(synchronize_session=False)
+    for p in plates:
+        db.delete(p)
+    db.commit()
+    return {"ok": True, "deleted": len(ids), "title": title}
+
 @app.delete("/api/plates/{plate_id}")
 def delete_plate(plate_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     p = db.query(models.Plate).filter(models.Plate.id==plate_id).first()
