@@ -156,6 +156,7 @@
       <button class="tab" data-tab="house">House</button>
       <button class="tab" data-tab="template">Daily Template</button>
       <button class="tab" data-tab="theme">Theme</button>
+      <button class="tab" data-tab="language">Language</button>
     </div>
     <!-- user -->
     <div id="settings-user" class="settings-pane">
@@ -258,6 +259,18 @@
           <div style="margin-top:8px; font-size:12px">Live preview — colors apply instantly. Stored per browser in localStorage.</div>
         </div>
         <div id="theme-msg" class="msg"></div>
+      </div>
+    </div>
+    <!-- language -->
+    <div id="settings-language" class="settings-pane" style="display:none">
+      <div class="card">
+        <h3>Language / Lingua</h3>
+        <select id="language-select">
+          <option value="en">English</option>
+          <option value="it">Italiano</option>
+        </select>
+        <div style="margin-top:8px; font-size:12px; color:var(--muted)">Choose language — stored per browser. / Scegli lingua.</div>
+        <div id="language-msg" class="msg"></div>
       </div>
     </div>
   </div>

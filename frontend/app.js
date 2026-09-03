@@ -61,11 +61,404 @@ function rangeForView(){
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
 
 // --- theme ---
-const themePresets={
-  light:{bg:"#fafaf7",fg:"#222222",card:"#ffffff",header:"#ffffff",accent:"#222222","accent-fg":"#ffffff",muted:"#666666",border:"#e8e8e8"},
-  dark:{bg:"#1a1a1e",fg:"#eeeeee",card:"#2a2a2e",header:"#222222",accent:"#e0e0e0","accent-fg":"#1a1a1e",muted:"#aaaaaa",border:"#333333"},
-  warm:{bg:"#fdf6e3",fg:"#3a2d1a",card:"#fffaf0",header:"#fff4d6",accent:"#8b5a2b","accent-fg":"#ffffff",muted:"#8a7a5a",border:"#e8dcc3"}
+const translations={
+  en:{
+    "header.title":"Lavagna Cibo",
+    "header.settings":"Settings",
+    "header.logout":"Logout",
+    "auth.login":"Login",
+    "auth.register":"Register",
+    "auth.username":"Username",
+    "auth.password":"Password",
+    "auth.submit.login":"Login",
+    "auth.submit.register":"Register",
+    "houses.title":"Your Houses",
+    "houses.create":"Create House",
+    "houses.create.placeholder":"House name (e.g. Casa Rossi)",
+    "houses.create.btn":"Create",
+    "houses.join":"Join House",
+    "houses.join.placeholder":"Invite code or house name",
+    "houses.join.btn":"Join",
+    "app.houses":"Houses",
+    "app.weekly":"Weekly",
+    "app.monthly":"Monthly",
+    "app.daily":"Daily",
+    "app.prev":"‹ Prev",
+    "app.next":"Next ›",
+    "app.today":"Today",
+    "app.buffer":"Buffer",
+    "app.buffer.desc.global":"Global shared across all days — drag plates here to keep as ideas",
+    "app.buffer.desc.per_day":"Global buffer (mode per_day active — this is shared, day buffers are inside each day)",
+    "app.buffer.add.plate":"Add plate to buffer (autocomplete)",
+    "app.buffer.note":"note (optional)",
+    "app.buffer.tags":"tags: fish, meat, dessert",
+    "app.buffer.add.btn":"Add",
+    "app.history.title":"History — all plates",
+    "app.history.search":"search title",
+    "app.history.tag":"filter tag",
+    "app.history.sort.name":"Sort: name A-Z",
+    "app.history.sort.recent":"Sort: recent",
+    "app.history.sort.count":"Sort: most used",
+    "app.history.hint":"Sortable by name — tags like fish, meat, first, dessert are editable per plate.",
+    "app.day.buffer":"Buffer for this day",
+    "app.day.add.slot":"Add new meal (e.g. breakfast)",
+    "app.day.add.slot.btn":"Add slot",
+    "settings.title":"Settings",
+    "settings.user":"User",
+    "settings.house":"House",
+    "settings.template":"Daily Template",
+    "settings.theme":"Theme",
+    "settings.language":"Language",
+    "settings.user.logged":"Logged as",
+    "settings.user.new_username":"new username",
+    "settings.user.change_username":"Change username",
+    "settings.user.current_pw":"current password",
+    "settings.user.new_pw":"new password",
+    "settings.user.change_pw":"Change password",
+    "settings.user.houses":"Your Houses — select active",
+    "settings.house.attributes":"House Attributes",
+    "settings.house.name.placeholder":"house name",
+    "settings.house.save":"Save name",
+    "settings.house.invite":"Invite code:",
+    "settings.house.copy":"Copy",
+    "settings.house.members":"Members:",
+    "settings.house.buffer":"day-specific buffer (per_day)",
+    "settings.house.add":"Add another house",
+    "settings.house.create.placeholder":"new house name",
+    "settings.house.create.btn":"Create",
+    "settings.house.join.placeholder":"invite code or house name",
+    "settings.house.join.btn":"Join",
+    "settings.template.title":"Daily Template — applies to all following dates",
+    "settings.template.desc":"Number of fields (meals) per day. Changes seed new dates; optionally apply to existing future dates.",
+    "settings.template.add.placeholder":"new field (e.g. breakfast)",
+    "settings.template.add.btn":"Add field",
+    "settings.template.save":"Save template",
+    "settings.template.apply":"apply to existing future dates",
+    "settings.theme.title":"Theme",
+    "settings.theme.bg":"Background",
+    "settings.theme.fg":"Text",
+    "settings.theme.card":"Card",
+    "settings.theme.header":"Header",
+    "settings.theme.accent":"Accent",
+    "settings.theme.accentFg":"Accent text",
+    "settings.theme.muted":"Muted",
+    "settings.theme.border":"Border",
+    "settings.theme.apply":"Apply custom",
+    "settings.theme.reset":"Reset to preset",
+    "settings.theme.copy":"Copy CSS",
+    "settings.theme.preview":"Live preview — colors apply instantly. Stored per browser in localStorage.",
+    "settings.language.title":"Language / Lingua",
+    "settings.language.choose":"Choose language — stored per browser.",
+    "common.daily":"daily",
+    "common.edit":"Edit",
+    "common.delete":"Delete",
+    "common.add":"Add",
+    "common.save":"Save",
+    "common.cancel":"Cancel",
+    "plate.note.placeholder":"note (optional)",
+    "plate.tags.placeholder":"tags: fish, meat",
+    "history.add.buffer":"Add to buffer",
+    "history.add.today":"Add to today",
+    "history.remove":"Remove from History permanently"
+  },
+  it:{
+    "header.title":"Lavagna Cibo",
+    "header.settings":"Impostazioni",
+    "header.logout":"Esci",
+    "auth.login":"Accedi",
+    "auth.register":"Registrati",
+    "auth.username":"Nome utente",
+    "auth.password":"Password",
+    "auth.submit.login":"Accedi",
+    "auth.submit.register":"Registrati",
+    "houses.title":"Le tue Case",
+    "houses.create":"Crea Casa",
+    "houses.create.placeholder":"Nome casa (es. Casa Rossi)",
+    "houses.create.btn":"Crea",
+    "houses.join":"Unisciti a Casa",
+    "houses.join.placeholder":"Codice invito o nome casa",
+    "houses.join.btn":"Unisciti",
+    "app.houses":"Case",
+    "app.weekly":"Settimanale",
+    "app.monthly":"Mensile",
+    "app.daily":"Giornaliero",
+    "app.prev":"‹ Prec",
+    "app.next":"Succ ›",
+    "app.today":"Oggi",
+    "app.buffer":"Buffer",
+    "app.buffer.desc.global":"Condiviso tra tutti i giorni — trascina qui le idee",
+    "app.buffer.desc.per_day":"Buffer globale (modalità giornaliera attiva — condiviso, i buffer giornalieri sono dentro ogni giorno)",
+    "app.buffer.add.plate":"Aggiungi piatto al buffer (autocompletamento)",
+    "app.buffer.note":"nota (opzionale)",
+    "app.buffer.tags":"tag: pesce, carne, dolce",
+    "app.buffer.add.btn":"Aggiungi",
+    "app.history.title":"Cronologia — tutti i piatti",
+    "app.history.search":"cerca titolo",
+    "app.history.tag":"filtra tag",
+    "app.history.sort.name":"Ordina: nome A-Z",
+    "app.history.sort.recent":"Ordina: recente",
+    "app.history.sort.count":"Ordina: più usato",
+    "app.history.hint":"Ordinabile per nome — tag come pesce, carne, primo, dolce modificabili per piatto.",
+    "app.day.buffer":"Buffer per questo giorno",
+    "app.day.add.slot":"Aggiungi nuovo pasto (es. colazione)",
+    "app.day.add.slot.btn":"Aggiungi",
+    "settings.title":"Impostazioni",
+    "settings.user":"Utente",
+    "settings.house":"Casa",
+    "settings.template":"Template Giornaliero",
+    "settings.theme":"Tema",
+    "settings.language":"Lingua",
+    "settings.user.logged":"Accesso come",
+    "settings.user.new_username":"nuovo nome utente",
+    "settings.user.change_username":"Cambia nome",
+    "settings.user.current_pw":"password attuale",
+    "settings.user.new_pw":"nuova password",
+    "settings.user.change_pw":"Cambia password",
+    "settings.user.houses":"Le tue Case — seleziona attiva",
+    "settings.house.attributes":"Attributi Casa",
+    "settings.house.name.placeholder":"nome casa",
+    "settings.house.save":"Salva nome",
+    "settings.house.invite":"Codice invito:",
+    "settings.house.copy":"Copia",
+    "settings.house.members":"Membri:",
+    "settings.house.buffer":"buffer giornaliero (per_day)",
+    "settings.house.add":"Aggiungi altra casa",
+    "settings.house.create.placeholder":"nome nuova casa",
+    "settings.house.create.btn":"Crea",
+    "settings.house.join.placeholder":"codice invito o nome",
+    "settings.house.join.btn":"Unisciti",
+    "settings.template.title":"Template Giornaliero — vale per tutte le date future",
+    "settings.template.desc":"Numero di campi (pasti) al giorno. Le modifiche creano i nuovi giorni; opzionale applica ai futuri esistenti.",
+    "settings.template.add.placeholder":"nuovo campo (es. colazione)",
+    "settings.template.add.btn":"Aggiungi campo",
+    "settings.template.save":"Salva template",
+    "settings.template.apply":"applica ai futuri esistenti",
+    "settings.theme.title":"Tema",
+    "settings.theme.bg":"Sfondo",
+    "settings.theme.fg":"Testo",
+    "settings.theme.card":"Card",
+    "settings.theme.header":"Header",
+    "settings.theme.accent":"Accento",
+    "settings.theme.accentFg":"Testo accento",
+    "settings.theme.muted":"Attutito",
+    "settings.theme.border":"Bordo",
+    "settings.theme.apply":"Applica custom",
+    "settings.theme.reset":"Reimposta preset",
+    "settings.theme.copy":"Copia CSS",
+    "settings.theme.preview":"Anteprima live — colori applicati subito. Salvato per browser in localStorage.",
+    "settings.language.title":"Lingua / Lingua",
+    "settings.language.choose":"Scegli lingua — salvata per browser.",
+    "common.daily":"giornaliero",
+    "common.edit":"Modifica",
+    "common.delete":"Elimina",
+    "common.add":"Aggiungi",
+    "common.save":"Salva",
+    "common.cancel":"Annulla",
+    "plate.note.placeholder":"nota (opzionale)",
+    "plate.tags.placeholder":"tag: pesce, carne",
+    "history.add.buffer":"Aggiungi al buffer",
+    "history.add.today":"Aggiungi a oggi",
+    "history.remove":"Rimuovi dalla cronologia"
+  }
 };
+let currentLang=localStorage.getItem("lavagna_lang")||"en";
+function t(k){ return (translations[currentLang]&&translations[currentLang][k]) || translations.en[k] || k; }
+function applyLanguage(lang){
+  currentLang=lang||"en";
+  localStorage.setItem("lavagna_lang", currentLang);
+  document.documentElement.lang=currentLang;
+  const sel=document.getElementById("language-select");
+  if(sel) sel.value=currentLang;
+  // header
+  const h1=document.querySelector("header h1");
+  if(h1) h1.textContent="🍝 "+t("header.title");
+  const sb=document.getElementById("settings-btn");
+  if(sb) sb.textContent="⚙ "+t("header.settings");
+  const lb=document.getElementById("logout-btn");
+  if(lb) lb.textContent=t("header.logout");
+  // auth tabs
+  const tl=document.getElementById("tab-login");
+  if(tl) tl.textContent=t("auth.login");
+  const tr=document.getElementById("tab-register");
+  if(tr) tr.textContent=t("auth.register");
+  const au=document.getElementById("auth-username");
+  if(au) au.placeholder=t("auth.username");
+  const ap=document.getElementById("auth-password");
+  if(ap) ap.placeholder=t("auth.password");
+  const as=document.getElementById("auth-submit");
+  if(as) as.textContent=t(currentLang==="it" ? (document.getElementById("tab-login").classList.contains("active")?"auth.submit.login":"auth.submit.register") : (document.getElementById("tab-login").classList.contains("active")?"Login":"Register"));
+  // fix auth submit correctly
+  const isLogin=document.getElementById("tab-login")?.classList.contains("active");
+  if(as) as.textContent=isLogin?t("auth.submit.login"):t("auth.submit.register");
+  // houses
+  const ht=document.querySelector("#houses-view h2");
+  if(ht) ht.textContent=t("houses.title");
+  const hc=document.querySelector("#houses-view .house-actions .card:nth-child(1) h3");
+  if(hc) hc.textContent=t("houses.create");
+  const hcp=document.getElementById("house-create-name");
+  if(hcp) hcp.placeholder=t("houses.create.placeholder");
+  const hcb=document.getElementById("house-create-btn");
+  if(hcb) hcb.textContent=t("houses.create.btn");
+  const hj=document.querySelector("#houses-view .house-actions .card:nth-child(2) h3");
+  if(hj) hj.textContent=t("houses.join");
+  const hjp=document.getElementById("house-join-code");
+  if(hjp) hjp.placeholder=t("houses.join.placeholder");
+  const hjb=document.getElementById("house-join-btn");
+  if(hjb) hjb.textContent=t("houses.join.btn");
+  // app header
+  const mhb=document.getElementById("manage-houses-btn");
+  if(mhb) mhb.textContent=t("app.houses");
+  document.querySelectorAll(".view-btn").forEach(b=>{
+    const v=b.dataset.view;
+    if(v==="weekly") b.textContent=t("app.weekly");
+    if(v==="monthly") b.textContent=t("app.monthly");
+    if(v==="daily") b.textContent=t("app.daily");
+  });
+  const pb=document.getElementById("prev-btn");
+  if(pb) pb.textContent=t("app.prev");
+  const nb=document.getElementById("next-btn");
+  if(nb) nb.textContent=t("app.next");
+  const tb=document.getElementById("today-btn");
+  if(tb) tb.textContent=t("app.today");
+  // buffer
+  const bh=document.querySelector("#global-buffer h3");
+  if(bh){
+    const mode=document.getElementById("buffer-mode-label")?.textContent||"";
+    bh.innerHTML=`${t("app.buffer")} <small>(drag here for unassigned)</small> <small>${mode}</small>`;
+  }
+  const bd=document.querySelector("#global-buffer .buffer-desc");
+  if(bd){
+    const isPerDay=document.getElementById("buffer-toggle")?.classList.contains("active");
+    bd.textContent=isPerDay?t("app.buffer.desc.per_day"):t("app.buffer.desc.global");
+  }
+  const btb=document.getElementById("buffer-toggle");
+  if(btb) btb.textContent=t("common.daily");
+  const gTitle=document.querySelector("#global-buffer .plate-title-input");
+  if(gTitle) gTitle.placeholder=t("app.buffer.add.plate");
+  const gNote=document.querySelector("#global-buffer .plate-note-input");
+  if(gNote) gNote.placeholder=t("app.buffer.note");
+  const gTags=document.querySelector("#global-buffer .plate-tags-input");
+  if(gTags) gTags.placeholder=t("app.buffer.tags");
+  const gBtn=document.querySelector("#global-buffer .plate-add-btn");
+  if(gBtn) gBtn.textContent=t("app.buffer.add.btn");
+  // history
+  const hh=document.querySelector("#history-section h3");
+  if(hh) hh.innerHTML=`${t("app.history.title")} <small id="history-count">${document.getElementById("history-count")?.textContent||""}</small>`;
+  const hq=document.getElementById("history-q");
+  if(hq) hq.placeholder=t("app.history.search");
+  const ht2=document.getElementById("history-tag");
+  if(ht2) ht2.placeholder=t("app.history.tag");
+  const hs=document.getElementById("history-sort");
+  if(hs){
+    const opts=hs.options;
+    if(opts[0]) opts[0].textContent=t("app.history.sort.name");
+    if(opts[1]) opts[1].textContent=t("app.history.sort.recent");
+    if(opts[2]) opts[2].textContent=t("app.history.sort.count");
+  }
+  const hh2=document.getElementById("history-hint");
+  if(hh2) hh2.textContent=t("app.history.hint");
+  // day modal
+  const dh=document.querySelector("#day-modal .add-slot input");
+  if(dh) dh.placeholder=t("app.day.add.slot");
+  const db=document.getElementById("add-slot-btn");
+  if(db) db.textContent=t("app.day.add.slot.btn");
+  const mbh=document.querySelector("#modal-buffer h3");
+  if(mbh) mbh.textContent=t("app.day.buffer");
+  // settings tabs
+  document.querySelectorAll("#settings-tabs .tab").forEach(b=>{
+    const tab=b.dataset.tab;
+    if(tab==="user") b.textContent=t("settings.user");
+    if(tab==="house") b.textContent=t("settings.house");
+    if(tab==="template") b.textContent=t("settings.template");
+    if(tab==="theme") b.textContent=t("settings.theme");
+    if(tab==="language") b.textContent=t("settings.language");
+  });
+  const st=document.querySelector("#settings-modal h2");
+  if(st) st.textContent=t("settings.title");
+  // settings user
+  const su=document.querySelector("#settings-user .card:nth-child(1) h3");
+  if(su) su.textContent=t("settings.user");
+  const sul=document.querySelector("#settings-user .card:nth-child(1) div");
+  if(sul && sul.textContent.includes("Logged as")) sul.innerHTML=`${t("settings.user.logged")} <strong id="settings-username">${document.getElementById("settings-username")?.textContent||""}</strong>`;
+  const sun=document.getElementById("settings-new-username");
+  if(sun) sun.placeholder=t("settings.user.new_username");
+  const sub=document.getElementById("settings-save-username");
+  if(sub) sub.textContent=t("settings.user.change_username");
+  const sop=document.getElementById("settings-old-pw");
+  if(sop) sop.placeholder=t("settings.user.current_pw");
+  const snp=document.getElementById("settings-new-pw");
+  if(snp) snp.placeholder=t("settings.user.new_pw");
+  const spb=document.getElementById("settings-save-pw");
+  if(spb) spb.textContent=t("settings.user.change_pw");
+  const suh=document.querySelector("#settings-user .card:nth-child(2) h3");
+  if(suh) suh.textContent=t("settings.user.houses");
+  // settings house
+  const sh=document.querySelector("#settings-house .card:nth-child(1) h3");
+  if(sh) sh.textContent=t("settings.house.attributes");
+  const shp=document.getElementById("settings-house-name");
+  if(shp) shp.placeholder=t("settings.house.name.placeholder");
+  const shb=document.getElementById("settings-save-house");
+  if(shb) shb.textContent=t("settings.house.save");
+  const sci=document.querySelector("#settings-house .card:nth-child(1) div:nth-child(2)");
+  if(sci && sci.innerHTML.includes("Invite code")) sci.innerHTML=`${t("settings.house.invite")} <code id="settings-invite">${document.getElementById("settings-invite")?.textContent||""}</code> <button id="copy-invite" style="padding:2px 6px; font-size:12px">${t("settings.house.copy")}</button>`;
+  // rebind copy after innerHTML
+  const ci2=document.getElementById("copy-invite");
+  if(ci2) ci2.onclick=()=>{ const code=document.getElementById("settings-invite").textContent; navigator.clipboard.writeText(code).then(()=> alert("copied "+code)); };
+  const sm=document.querySelector("#settings-house .card:nth-child(1) div:nth-child(3)");
+  if(sm && sm.textContent.includes("Members")) sm.innerHTML=`${t("settings.house.members")} <span id="settings-members">${document.getElementById("settings-members")?.textContent||""}</span>`;
+  const sbt=document.getElementById("settings-buffer-toggle");
+  if(sbt && sbt.parentElement) sbt.parentElement.lastChild.textContent=" "+t("settings.house.buffer");
+  const sha=document.querySelector("#settings-house .card:nth-child(2) h3");
+  if(sha) sha.textContent=t("settings.house.add");
+  const scn=document.getElementById("settings-create-name");
+  if(scn) scn.placeholder=t("settings.house.create.placeholder");
+  const scb=document.getElementById("settings-create-btn");
+  if(scb) scb.textContent=t("settings.house.create.btn");
+  const sjc=document.getElementById("settings-join-code");
+  if(sjc) sjc.placeholder=t("settings.house.join.placeholder");
+  const sjb=document.getElementById("settings-join-btn");
+  if(sjb) sjb.textContent=t("settings.house.join.btn");
+  // template
+  const th=document.querySelector("#settings-template .card h3");
+  if(th) th.textContent=t("settings.template.title");
+  const td=document.querySelector("#settings-template .card div");
+  if(td) td.textContent=t("settings.template.desc");
+  const tnp=document.getElementById("template-new-label");
+  if(tnp) tnp.placeholder=t("settings.template.add.placeholder");
+  const tab=document.getElementById("template-add-btn");
+  if(tab) tab.textContent=t("settings.template.add.btn");
+  const tsb=document.getElementById("template-save");
+  if(tsb) tsb.textContent=t("settings.template.save");
+  const tap=document.getElementById("template-apply-future");
+  if(tap && tap.parentElement) tap.parentElement.lastChild.textContent=" "+t("settings.template.apply");
+  // theme
+  const th2=document.querySelector("#settings-theme .card h3");
+  if(th2) th2.textContent=t("settings.theme.title");
+  const thg=document.querySelectorAll("#theme-custom-grid label");
+  const tkeys=["settings.theme.bg","settings.theme.fg","settings.theme.card","settings.theme.header","settings.theme.accent","settings.theme.accentFg","settings.theme.muted","settings.theme.border"];
+  thg.forEach((lab,idx)=>{
+    const key=tkeys[idx];
+    if(!key) return;
+    const txt=t(key);
+    // label text is before input, keep input
+    const input=lab.querySelector("input");
+    if(input) lab.childNodes[0].textContent=txt+" ";
+  });
+  const tap2=document.getElementById("theme-apply");
+  if(tap2) tap2.textContent=t("settings.theme.apply");
+  const tr=document.getElementById("theme-reset");
+  if(tr) tr.textContent=t("settings.theme.reset");
+  const te=document.getElementById("theme-export");
+  if(te) te.textContent=t("settings.theme.copy");
+  const tp=document.querySelector("#theme-preview div:last-child");
+  if(tp) tp.textContent=t("settings.theme.preview");
+  // language pane
+  const lh=document.querySelector("#settings-language .card h3");
+  if(lh) lh.textContent=t("settings.language.title");
+  const lc=document.querySelector("#settings-language .card div");
+  if(lc) lc.textContent=t("settings.language.choose");
+}
+const themePresets={
 function applyTheme(){
   const th = localStorage.getItem("lavagna_theme") || "light";
   document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom");
@@ -148,6 +541,7 @@ function saveCustomTheme(){
 // --- init ---
 document.addEventListener("DOMContentLoaded", async ()=>{
   applyTheme();
+  applyLanguage(localStorage.getItem("lavagna_lang")||"en");
   bindEvents();
   updateViewButtons();
   if(state.token){
@@ -263,9 +657,9 @@ function bindEvents(){
     if(btb && btb.tagName==="BUTTON"){
       const isDaily=v==="per_day";
       btb.classList.toggle("active", isDaily);
-      btb.style.background=isDaily?"var(--accent)":"";
-      btb.style.color=isDaily?"var(--accent-fg)":"";
-      btb.style.borderColor=isDaily?"var(--accent)":"var(--border)";
+      btb.style.background=isDaily?"#22c55e":"#e5e7eb";
+      btb.style.color=isDaily?"#fff":"#555";
+      btb.style.borderColor=isDaily?"#16a34a":"#d1d5db";
     }
   };
   const ci=document.getElementById("copy-invite");
@@ -337,6 +731,16 @@ function bindEvents(){
       if(msg){ msg.textContent="CSS copied"; setTimeout(()=>msg.textContent="",2000); }
     });
   };
+  const langSel=document.getElementById("language-select");
+  if(langSel){
+    langSel.value=localStorage.getItem("lavagna_lang")||"en";
+    langSel.onchange=e=>{
+      applyLanguage(e.target.value);
+      loadCalendar(); loadHistory();
+      const msg=document.getElementById("language-msg");
+      if(msg){ msg.textContent=t("settings.language.choose"); setTimeout(()=>msg.textContent="",2000); }
+    };
+  }
 }
 function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
@@ -498,11 +902,10 @@ async function loadCalendar(){
       const isDaily=data.house.buffer_mode==="per_day";
       if(bt.tagName==="BUTTON"){
         bt.classList.toggle("active", isDaily);
-        bt.textContent="daily";
-        // keep button with just "daily" as requested, active shows state via accent
-        bt.style.background = isDaily ? "var(--accent)" : "";
-        bt.style.color = isDaily ? "var(--accent-fg)" : "";
-        bt.style.borderColor = isDaily ? "var(--accent)" : "var(--border)";
+        bt.textContent=t("common.daily");
+        bt.style.background = isDaily ? "#22c55e" : "#e5e7eb";
+        bt.style.color = isDaily ? "#fff" : "#555";
+        bt.style.borderColor = isDaily ? "#16a34a" : "#d1d5db";
       } else {
         bt.checked=isDaily;
       }
@@ -570,12 +973,12 @@ function renderHistory(){
     });
     div.addEventListener("dragend", ()=>{ state.draggingHistory=null; div.classList.remove("dragging"); });
     const btn=document.createElement("button");
-    btn.textContent="Add to buffer";
+    btn.textContent=t("history.add.buffer");
     btn.onclick=async()=>{
       try{ await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, tags: entry.tags.join(","), date:null})}); loadCalendar(); loadHistory(); }catch(e){ alert(e.message); }
     };
     const btn2=document.createElement("button");
-    btn2.textContent="Add to today";
+    btn2.textContent=t("history.add.today");
     btn2.style.marginLeft="6px";
     btn2.onclick=async()=>{
       const today=todayISO();
@@ -583,14 +986,14 @@ function renderHistory(){
     };
     const btn3=document.createElement("button");
     btn3.textContent="✕";
-    btn3.title="Remove from History permanently (deletes all plates with this title)";
+    btn3.title=t("history.remove");
     btn3.style.marginLeft="6px";
     btn3.style.background="#fee";
     btn3.style.color="#c00";
     btn3.style.borderColor="#fcc";
     btn3.onclick=async(e)=>{
       e.stopPropagation();
-      if(!confirm(`Remove "${entry.title}" from History permanently? This deletes all ${entry.count} plate(s) with this title in this house.`)) return;
+      if(!confirm(`${t("history.remove")} "${entry.title}"?`)) return;
       try{ await api(`/api/plates/history?house_id=${state.currentHouseId}&title=${encodeURIComponent(entry.title)}`,{method:"DELETE"}); loadHistory(); loadCalendar(); }catch(err){ alert(err.message); }
     };
     btn3.addEventListener("mousedown", e=>e.stopPropagation());
