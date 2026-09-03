@@ -4,7 +4,7 @@ header { display:flex; justify-content:space-between; align-items:center; paddin
 header h1 { margin:0; font-size:20px; }
 .card { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:16px; margin:12px 0; }
 .tabs { display:flex; gap:8px; margin-bottom:12px; }
-.tab { padding:8px 16px; border:1px solid #ddd; background:#f5f5f5; cursor:pointer; border-radius:6px; }
+.tab { padding:8px 16px; border:1px solid #ddd; background:#f5f5f5; color:#555; cursor:pointer; border-radius:6px; }
 .tab.active { background:#222; color:#fff; }
 input, select, button { padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
 button { background:#222; color:#fff; cursor:pointer; }
