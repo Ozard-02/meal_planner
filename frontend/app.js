@@ -515,8 +515,12 @@ function renderPlate(p, date, slotId){
   div.draggable = !past;
   div.dataset.plateId=p.id;
   const tagsHtml=(p.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+  const canEdit = state.user && p.proposed_by===state.user.id && !past;
+  const actionsHtml = canEdit
+    ? `<div class="plate-title-actions"><button class="icon-btn edit-btn" title="Edit">✎</button><button class="icon-btn del-btn" title="Delete">✕</button></div>`
+    : past ? `<span class="past-label">locked (past)</span>` : ``;
   div.innerHTML=`
-    <div class="plate-title">${escapeHtml(p.title)}${past? ' <span class="past-label">(past)</span>':''}</div>
+    <div class="plate-title-row"><div class="plate-title">${escapeHtml(p.title)}${past? ' <span class="past-label">(past)</span>':''}</div>${actionsHtml}</div>
     ${p.note?`<div class="plate-note">${escapeHtml(p.note)}</div>`:""}
     ${tagsHtml?`<div class="plate-tags">${tagsHtml}</div>`:""}
     <div class="plate-meta">
@@ -526,31 +530,26 @@ function renderPlate(p, date, slotId){
       <span style="margin-left:auto; font-size:11px; color:#777">#${p.id} by ${p.proposed_by}</span>
     </div>
   `;
-  const actions=document.createElement("div");
-  actions.className="plate-actions";
-  if(state.user && p.proposed_by===state.user.id && !past){
-    const edit=document.createElement("button");
-    edit.textContent="Edit";
-    edit.onclick=async()=>{
+  if(canEdit){
+    const editBtn=div.querySelector(".edit-btn");
+    const delBtn=div.querySelector(".del-btn");
+    editBtn.onclick=async(e)=>{
+      e.stopPropagation();
       const nt=prompt("Edit title", p.title);
       if(nt===null) return;
       const nn=prompt("Edit note", p.note);
       if(nn===null) return;
       const ng=prompt("Edit tags (comma separated: fish, meat, dessert)", (p.tags||[]).join(", "));
       if(ng===null) return;
-      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn, tags:ng})}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message); }
+      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn, tags:ng})}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(err){ alert(err.message); }
     };
-    const del=document.createElement("button");
-    del.textContent="Delete";
-    del.onclick=async()=>{ if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(e){ alert(e.message);} } };
-    actions.appendChild(edit); actions.appendChild(del);
-  } else if(past){
-    const lock=document.createElement("span");
-    lock.className="past-label";
-    lock.textContent="locked (past)";
-    actions.appendChild(lock);
+    delBtn.onclick=async(e)=>{
+      e.stopPropagation();
+      if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(err){ alert(err.message);} }
+    };
+    editBtn.addEventListener("mousedown", e=>e.stopPropagation());
+    delBtn.addEventListener("mousedown", e=>e.stopPropagation());
   }
-  div.appendChild(actions);
   if(!past){
     div.querySelectorAll(".vote-btn").forEach(btn=>{
       btn.onclick=async(e)=>{

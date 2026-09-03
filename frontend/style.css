@@ -40,7 +40,13 @@ button:hover { opacity:0.9; }
 .plates { display:flex; flex-direction:column; gap:6px; }
 .plate { background:#fff; border:1px solid #ddd; border-radius:6px; padding:8px; cursor:grab; position:relative; }
 .plate.dragging { opacity:0.4; }
-.plate-title { font-weight:600; font-size:14px; }
+.plate-title { font-weight:600; font-size:14px; flex:1; word-break:break-word; }
+.plate-title-row { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.plate-title-actions { display:flex; gap:4px; flex-shrink:0; }
+.icon-btn { width:22px; height:22px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:12px; line-height:1; background:#f5f5f5; color:#555; border:1px solid #ddd; cursor:pointer; }
+.icon-btn:hover { background:#fff; color:#222; }
+.icon-btn.del-btn:hover { background:#fee; color:#c00; border-color:#fcc; }
+.icon-btn.edit-btn:hover { background:#eef6ff; color:#247; border-color:#bcd; }
 .plate-note { font-size:12px; color:#555; margin-top:4px; white-space:pre-wrap; }
 .plate-meta { display:flex; gap:6px; align-items:center; margin-top:6px; font-size:12px; }
 .vote-btn { padding:2px 6px; font-size:12px; background:#f5f5f5; color:#222; border:1px solid #ddd; }
