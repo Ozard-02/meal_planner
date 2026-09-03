@@ -61,21 +61,76 @@ function rangeForView(){
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[c])); }
 
 // --- theme ---
+const themePresets={
+  light:{bg:"#fafaf7",fg:"#222222",card:"#ffffff",header:"#ffffff",accent:"#222222","accent-fg":"#ffffff",muted:"#666666",border:"#e8e8e8"},
+  dark:{bg:"#1a1a1e",fg:"#eeeeee",card:"#2a2a2e",header:"#222222",accent:"#e0e0e0","accent-fg":"#1a1a1e",muted:"#aaaaaa",border:"#333333"},
+  warm:{bg:"#fdf6e3",fg:"#3a2d1a",card:"#fffaf0",header:"#fff4d6",accent:"#8b5a2b","accent-fg":"#ffffff",muted:"#8a7a5a",border:"#e8dcc3"}
+};
 function applyTheme(){
   const th = localStorage.getItem("lavagna_theme") || "light";
-  const accent = localStorage.getItem("lavagna_accent") || "#222222";
-  document.body.classList.remove("theme-dark","theme-warm","theme-light");
+  document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom");
   document.body.classList.add("theme-"+th);
-  document.documentElement.style.setProperty("--accent", accent);
+  // reset custom inline vars first
+  const vars=["bg","fg","card","header","accent","accent-fg","muted","border"];
+  vars.forEach(v=> document.documentElement.style.removeProperty("--"+v));
+  if(th==="custom"){
+    const custom={};
+    vars.forEach(v=>{
+      const val=localStorage.getItem("lavagna_custom_"+v);
+      if(val) { custom[v]=val; document.documentElement.style.setProperty("--"+v, val); }
+    });
+    // also ensure missing vars fallback to light
+  } else {
+    // for presets, allow accent override from custom accent if set? keep preset accent unless custom accent set
+    const accentOverride=localStorage.getItem("lavagna_custom_accent");
+    const preset=themePresets[th]||themePresets.light;
+    // if user has customized accent separately while on preset, apply it
+    if(accentOverride && th!=="custom"){
+      document.documentElement.style.setProperty("--accent", accentOverride);
+      // try to guess accent-fg
+      const isDark=parseInt(accentOverride.slice(1,3),16) < 128;
+      // keep preset accent-fg unless custom has it
+      const cfg=localStorage.getItem("lavagna_custom_accent-fg");
+      if(cfg) document.documentElement.style.setProperty("--accent-fg", cfg);
+    }
+  }
+  // sync UI
   const sel=document.getElementById("theme-select");
-  const ac=document.getElementById("theme-accent");
   if(sel) sel.value=th;
-  if(ac) ac.value=accent;
+  const map={bg:"theme-bg",fg:"theme-fg",card:"theme-card",header:"theme-header",accent:"theme-accent","accent-fg":"theme-accent-fg",muted:"theme-muted",border:"theme-border"};
+  Object.entries(map).forEach(([cssId,domId])=>{
+    const el=document.getElementById(domId);
+    if(!el) return;
+    const thVal=th==="custom" ? (localStorage.getItem("lavagna_custom_"+cssId) || themePresets.light[cssId]) : (localStorage.getItem("lavagna_custom_"+cssId) && th!=="custom" && cssId==="accent" ? localStorage.getItem("lavagna_custom_"+cssId) : (themePresets[th]||themePresets.light)[cssId]);
+    // For custom, show stored custom, else show preset value (or accent override)
+    if(th==="custom"){
+      el.value=localStorage.getItem("lavagna_custom_"+cssId) || themePresets.light[cssId];
+    } else {
+      if(cssId==="accent" && localStorage.getItem("lavagna_custom_accent")){
+        el.value=localStorage.getItem("lavagna_custom_accent");
+      } else {
+        el.value=(themePresets[th]||themePresets.light)[cssId];
+      }
+    }
+  });
+  const grid=document.getElementById("theme-custom-grid");
+  if(grid) grid.style.opacity= th==="custom" ? "1" : "0.6";
 }
 function saveTheme(th, accent){
   localStorage.setItem("lavagna_theme", th);
-  if(accent) localStorage.setItem("lavagna_accent", accent);
+  if(accent) localStorage.setItem("lavagna_custom_accent", accent);
   applyTheme();
+}
+function saveCustomTheme(){
+  const vars=["bg","fg","card","header","accent","accent-fg","muted","border"];
+  vars.forEach(v=>{
+    const el=document.getElementById("theme-"+v);
+    if(el) localStorage.setItem("lavagna_custom_"+v, el.value);
+  });
+  localStorage.setItem("lavagna_theme","custom");
+  applyTheme();
+  const msg=document.getElementById("theme-msg");
+  if(msg) { msg.textContent="Custom theme applied"; setTimeout(()=>msg.textContent="",2000); }
 }
 
 // --- init ---
@@ -102,6 +157,21 @@ function bindEvents(){
   if(sb) sb.onclick=openSettings;
   document.getElementById("house-create-btn").onclick=createHouse;
   document.getElementById("house-join-btn").onclick=joinHouse;
+  const scb=document.getElementById("settings-create-btn");
+  if(scb) scb.onclick=settingsCreateHouse;
+  const sjb=document.getElementById("settings-join-btn");
+  if(sjb) sjb.onclick=settingsJoinHouse;
+  const mhb=document.getElementById("manage-houses-btn");
+  if(mhb) mhb.onclick=()=>{
+    openSettings();
+    document.querySelectorAll("#settings-tabs .tab").forEach(x=>x.classList.remove("active"));
+    const ht=document.querySelector("#settings-tabs .tab[data-tab='house']");
+    if(ht) ht.classList.add("active");
+    document.querySelectorAll(".settings-pane").forEach(p=>p.style.display="none");
+    const pane=document.getElementById("settings-house");
+    if(pane) pane.style.display="block";
+    refreshSettingsHouse();
+  };
   document.getElementById("house-select").onchange=e=>{ state.currentHouseId=parseInt(e.target.value); saveState(); loadCalendar(); loadHistory(); };
   document.getElementById("buffer-toggle").onchange=toggleBuffer;
   document.querySelectorAll(".view-btn").forEach(b=> b.onclick=()=>{ state.view=b.dataset.view; saveState(); updateViewButtons(); loadCalendar(); });
@@ -184,9 +254,65 @@ function bindEvents(){
   const ts=document.getElementById("template-save");
   if(ts) ts.onclick=saveTemplate;
   const thsel=document.getElementById("theme-select");
-  if(thsel) thsel.onchange=e=> saveTheme(e.target.value, localStorage.getItem("lavagna_accent")||"#222222");
-  const thacc=document.getElementById("theme-accent");
-  if(thacc) thacc.oninput=e=> saveTheme(localStorage.getItem("lavagna_theme")||"light", e.target.value);
+  if(thsel) thsel.onchange=e=>{
+    const v=e.target.value;
+    if(v==="custom"){
+      // ensure custom vars exist, init from current preset if missing
+      const preset=themePresets.light;
+      ["bg","fg","card","header","accent","accent-fg","muted","border"].forEach(k=>{
+        if(!localStorage.getItem("lavagna_custom_"+k)){
+          const cur=getComputedStyle(document.documentElement).getPropertyValue("--"+k).trim() || preset[k];
+          if(cur) localStorage.setItem("lavagna_custom_"+k, cur);
+        }
+      });
+      localStorage.setItem("lavagna_theme","custom");
+      applyTheme();
+    } else {
+      saveTheme(v, localStorage.getItem("lavagna_custom_accent")||undefined);
+    }
+  };
+  // custom pickers
+  ["bg","fg","card","header","accent","accent-fg","muted","border"].forEach(k=>{
+    const el=document.getElementById("theme-"+k);
+    if(!el) return;
+    el.addEventListener("input", e=>{
+      localStorage.setItem("lavagna_custom_"+k, e.target.value);
+      // if not custom, switch to custom for bg/fg etc, but for accent allow preset override too
+      const curTh=localStorage.getItem("lavagna_theme")||"light";
+      if(curTh!=="custom" && k!=="accent"){
+        localStorage.setItem("lavagna_theme","custom");
+      }
+      // for accent, if not custom still apply accent override
+      applyTheme();
+    });
+  });
+  const thApply=document.getElementById("theme-apply");
+  if(thApply) thApply.onclick=()=> saveCustomTheme();
+  const thReset=document.getElementById("theme-reset");
+  if(thReset) thReset.onclick=()=>{
+    ["bg","fg","card","header","accent","accent-fg","muted","border"].forEach(k=> localStorage.removeItem("lavagna_custom_"+k));
+    localStorage.setItem("lavagna_theme","light");
+    // also clear old accent key
+    localStorage.removeItem("lavagna_custom_accent");
+    localStorage.removeItem("lavagna_accent");
+    applyTheme();
+    const msg=document.getElementById("theme-msg");
+    if(msg){ msg.textContent="Reset to light"; setTimeout(()=>msg.textContent="",2000); }
+  };
+  const thExport=document.getElementById("theme-export");
+  if(thExport) thExport.onclick=()=>{
+    const vars=["bg","fg","card","header","accent","accent-fg","muted","border"];
+    let css=":root {\n";
+    vars.forEach(v=>{
+      const val=getComputedStyle(document.documentElement).getPropertyValue("--"+v).trim() || localStorage.getItem("lavagna_custom_"+v) || themePresets.light[v];
+      css+=`  --${v}: ${val};\n`;
+    });
+    css+="}";
+    navigator.clipboard.writeText(css).then(()=> {
+      const msg=document.getElementById("theme-msg");
+      if(msg){ msg.textContent="CSS copied"; setTimeout(()=>msg.textContent="",2000); }
+    });
+  };
 }
 function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
@@ -287,6 +413,32 @@ async function joinHouse(){
   try{
     const h=await api("/api/houses/join",{method:"POST", body:JSON.stringify({invite_code:code})});
     state.currentHouseId=h.id; saveState(); document.getElementById("house-join-code").value=""; await loadHouses();
+  }catch(e){ msg.textContent=e.message; }
+}
+async function settingsCreateHouse(){
+  const inp=document.getElementById("settings-create-name");
+  const msg=document.getElementById("settings-create-msg");
+  if(!inp||!msg) return;
+  const name=inp.value.trim();
+  msg.textContent="";
+  if(!name){ msg.textContent="name required"; return; }
+  try{
+    const h=await api("/api/houses",{method:"POST", body:JSON.stringify({name})});
+    state.currentHouseId=h.id; saveState(); inp.value=""; await loadHouses(); refreshSettingsHouse(); refreshSettingsUser();
+    msg.textContent="created "+h.name; setTimeout(()=>msg.textContent="",2000);
+  }catch(e){ msg.textContent=e.message; }
+}
+async function settingsJoinHouse(){
+  const inp=document.getElementById("settings-join-code");
+  const msg=document.getElementById("settings-join-msg");
+  if(!inp||!msg) return;
+  const code=inp.value.trim();
+  msg.textContent="";
+  if(!code){ msg.textContent="code required"; return; }
+  try{
+    const h=await api("/api/houses/join",{method:"POST", body:JSON.stringify({invite_code:code})});
+    state.currentHouseId=h.id; saveState(); inp.value=""; await loadHouses(); refreshSettingsHouse(); refreshSettingsUser();
+    msg.textContent="joined "+h.name; setTimeout(()=>msg.textContent="",2000);
   }catch(e){ msg.textContent=e.message; }
 }
 function shift(dir){

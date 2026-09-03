@@ -1,17 +1,17 @@
-:root { --bg:#fafaf7; --fg:#222; --card:#fff; --header:#fff; --accent:#222; --muted:#666; }
-body.theme-dark { --bg:#1a1a1e; --fg:#eee; --card:#2a2a2e; --header:#222; --accent:#e0e0e0; --muted:#aaa; }
-body.theme-warm { --bg:#fdf6e3; --fg:#3a2d1a; --card:#fffaf0; --header:#fff4d6; --accent:#8b5a2b; --muted:#8a7a5a; }
+:root { --bg:#fafaf7; --fg:#222; --card:#fff; --header:#fff; --accent:#222; --accent-fg:#fff; --muted:#666; --border:#e8e8e8; }
+body.theme-dark { --bg:#1a1a1e; --fg:#eee; --card:#2a2a2e; --header:#222; --accent:#e0e0e0; --accent-fg:#1a1a1e; --muted:#aaa; --border:#333; }
+body.theme-warm { --bg:#fdf6e3; --fg:#3a2d1a; --card:#fffaf0; --header:#fff4d6; --accent:#8b5a2b; --accent-fg:#fff; --muted:#8a7a5a; --border:#e8dcc3; }
 * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
 body { margin:0; background:var(--bg); color:var(--fg); }
 header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:var(--header); border-bottom:1px solid #e8e8e8; position:sticky; top:0; z-index:10; }
 header h1 { margin:0; font-size:20px; }
-.card { background:var(--card); border:1px solid #e8e8e8; border-radius:8px; padding:16px; margin:12px 0; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
 .tabs { display:flex; gap:8px; margin-bottom:12px; }
 .tab { padding:8px 16px; border:1px solid #ddd; background:#f5f5f5; color:#555; cursor:pointer; border-radius:6px; }
-.tab.active { background:#222; color:#fff; }
-input, select, button { padding:8px 10px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
-button { background:#222; color:#fff; cursor:pointer; }
-button:hover { opacity:0.9; }
+.tab.active { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+input, select, button { padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:14px; }
+button { background:var(--accent); color:var(--accent-fg); cursor:pointer; border-color:var(--accent); }
+button:hover { opacity:0.92; filter:brightness(1.05); }
 .msg { margin-top:8px; font-size:13px; color:#c00; min-height:16px; }
 #auth-view { display:flex; justify-content:center; padding:40px 20px; }
 .auth-card { width:320px; }
@@ -19,26 +19,26 @@ button:hover { opacity:0.9; }
 .houses-container { max-width:800px; margin:20px auto; padding:0 20px; }
 #houses-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-bottom:20px; }
 .house-card { cursor:pointer; transition:0.1s; }
-.house-card:hover { border-color:#222; }
+.house-card:hover { border-color:var(--accent); }
 .house-actions { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.app-header { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; padding:12px 20px; background:#fff; border-bottom:1px solid #eee; }
-.view-btn { background:#f5f5f5; color:#222; border:1px solid #ddd; }
-.view-btn.active { background:#222; color:#fff; }
+.app-header { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center; padding:12px 20px; background:var(--header); border-bottom:1px solid var(--border); }
+.view-btn { background:#f5f5f5; color:#222; border:1px solid var(--border); }
+.view-btn.active { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
 .nav-controls { display:flex; gap:8px; align-items:center; }
 #range-label { font-weight:600; margin-left:8px; }
 
 #weekly-view { display:grid; grid-template-columns:repeat(7,1fr); gap:12px; padding:20px; }
-.day-column { background:#fff; border:1px solid #e8e8e8; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; min-height:400px; }
-.day-header { padding:10px; background:#f9f9f7; border-bottom:1px solid #eee; text-align:center; cursor:pointer; }
+.day-column { background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; min-height:400px; }
+.day-header { padding:10px; background:var(--card); border-bottom:1px solid var(--border); text-align:center; cursor:pointer; filter:brightness(0.98); }
 .day-header strong { display:block; }
 .day-header small { color:#666; }
 .day-slots { flex:1; display:flex; flex-direction:column; gap:8px; padding:8px; }
-.slot { border:1px dashed #ddd; border-radius:6px; padding:8px; background:#fcfcfc; min-height:100px; }
+.slot { border:1px dashed var(--border); border-radius:6px; padding:8px; background:var(--card); filter:brightness(0.99); min-height:100px; }
 .slot.drag-over { background:#fff8dc; border-color:#f0c040; }
 .slot-title { font-weight:700; font-size:13px; text-transform:capitalize; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
 .slot-title button { font-size:11px; padding:2px 6px; background:#eee; color:#222; }
 .plates { display:flex; flex-direction:column; gap:6px; }
-.plate { background:#fff; border:1px solid #ddd; border-radius:6px; padding:8px; cursor:grab; position:relative; }
+.plate { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:8px; cursor:grab; position:relative; }
 .plate.dragging { opacity:0.4; }
 .plate-title { font-weight:600; font-size:14px; flex:1; word-break:break-word; }
 .plate-title-row { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
@@ -56,12 +56,12 @@ button:hover { opacity:0.9; }
 .plate-actions button { font-size:11px; padding:2px 6px; background:#eee; color:#222; }
 .add-plate { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; position:relative; }
 .add-plate input { flex:1; min-width:120px; }
-.autocomplete { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:6px; z-index:5; max-height:120px; overflow:auto; display:none; }
+.autocomplete { position:absolute; top:100%; left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:6px; z-index:5; max-height:120px; overflow:auto; display:none; }
 .autocomplete div { padding:6px 10px; cursor:pointer; font-size:13px; }
 .autocomplete div:hover, .autocomplete div.active { background:#f0f0f0; }
 #buffer-history-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px; align-items:start; }
 #buffer-history-row #global-buffer, #buffer-history-row #history-section { margin:0; }
-.buffer-zone { margin:20px; padding:16px; background:#fff; border:2px dashed #ccc; border-radius:8px; }
+.buffer-zone { margin:20px; padding:16px; background:var(--card); border:2px dashed var(--border); border-radius:8px; }
 #buffer-history-row .buffer-zone { margin:0; }
 .buffer-zone.drag-over { background:#fff8dc; border-color:#f0c040; }
 .buffer-zone h3 { margin:0 0 8px 0; }
@@ -71,8 +71,8 @@ button:hover { opacity:0.9; }
 #monthly-view { padding:20px; }
 .month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
 .month-header { text-align:center; font-weight:700; padding:8px; color:#666; font-size:13px; }
-.month-cell { background:#fff; border:1px solid #eee; border-radius:8px; min-height:110px; padding:8px; cursor:pointer; }
-.month-cell.today { border-color:#222; }
+.month-cell { background:var(--card); border:1px solid var(--border); border-radius:8px; min-height:110px; padding:8px; cursor:pointer; }
+.month-cell.today { border-color:var(--accent); border-width:2px; }
 .month-cell strong { font-size:13px; }
 .month-cell .mini-plates { font-size:11px; color:#555; margin-top:4px; }
 
@@ -90,7 +90,7 @@ button:hover { opacity:0.9; }
 /* modal */
 #day-modal, #settings-modal { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; }
 .modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.4); }
-.modal-content { position:relative; background:#fafaf7; width:min(900px,95vw); max-height:90vh; overflow:auto; border-radius:12px; padding:20px; z-index:1; }
+.modal-content { position:relative; background:var(--bg); width:min(900px,95vw); max-height:90vh; overflow:auto; border-radius:12px; padding:20px; z-index:1; border:1px solid var(--border); }
 .modal-slots { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 @media (max-width:900px){ #buffer-history-row{grid-template-columns:1fr} }
 @media (max-width:600px){ .modal-slots{grid-template-columns:1fr} #weekly-view{grid-template-columns:1fr} .house-actions{grid-template-columns:1fr}}

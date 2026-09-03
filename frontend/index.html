@@ -61,6 +61,7 @@
       <select id="house-select"></select>
       <span id="house-invite"></span>
       <label style="margin-left:12px"><input type="checkbox" id="buffer-toggle"> day-specific buffer</label>
+      <button id="manage-houses-btn" style="margin-left:8px; padding:4px 8px; font-size:12px">Houses</button>
     </div>
     <div class="view-switcher">
       <button class="view-btn active" data-view="weekly">Weekly</button>
@@ -186,6 +187,20 @@
         <label style="display:block; margin-top:10px"><input type="checkbox" id="settings-buffer-toggle"> day-specific buffer (per_day)</label>
         <div id="settings-house-msg" class="msg"></div>
       </div>
+      <div class="card">
+        <h3>Add another house</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+          <input id="settings-create-name" placeholder="new house name" style="flex:1">
+          <button id="settings-create-btn">Create</button>
+        </div>
+        <div id="settings-create-msg" class="msg"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+          <input id="settings-join-code" placeholder="invite code or house name" style="flex:1">
+          <button id="settings-join-btn">Join</button>
+        </div>
+        <div id="settings-join-msg" class="msg"></div>
+        <div style="margin-top:8px; font-size:12px; color:var(--muted)">Create a second house or join another — you can belong to many and switch via header or Settings → User.</div>
+      </div>
     </div>
     <!-- template -->
     <div id="settings-template" class="settings-pane" style="display:none">
@@ -212,11 +227,33 @@
           <option value="light">Light</option>
           <option value="dark">Dark</option>
           <option value="warm">Warm</option>
+          <option value="custom">Custom</option>
         </select>
-        <div style="margin-top:10px">
-          <label>Accent: <input type="color" id="theme-accent" value="#222222"></label>
+        <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px" id="theme-custom-grid">
+          <label>Background <input type="color" id="theme-bg" value="#fafaf7"></label>
+          <label>Text <input type="color" id="theme-fg" value="#222222"></label>
+          <label>Card <input type="color" id="theme-card" value="#ffffff"></label>
+          <label>Header <input type="color" id="theme-header" value="#ffffff"></label>
+          <label>Accent <input type="color" id="theme-accent" value="#222222"></label>
+          <label>Accent text <input type="color" id="theme-accent-fg" value="#ffffff"></label>
+          <label>Muted <input type="color" id="theme-muted" value="#666666"></label>
+          <label>Border <input type="color" id="theme-border" value="#e8e8e8"></label>
         </div>
-        <div style="margin-top:8px; font-size:12px; color:#666">Theme stored locally per browser.</div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+          <button id="theme-apply">Apply custom</button>
+          <button id="theme-reset" style="background:#f5f5f5;color:#222">Reset to preset</button>
+          <button id="theme-export" style="background:#f5f5f5;color:#222">Copy CSS</button>
+        </div>
+        <div style="margin-top:10px; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--card)" id="theme-preview">
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <span style="padding:6px 10px; background:var(--accent); color:var(--accent-fg); border-radius:6px">Accent button</span>
+            <span style="padding:6px 10px; background:var(--card); border:1px solid var(--border); border-radius:6px">Card</span>
+            <span style="padding:6px 10px; background:var(--header); border:1px solid var(--border); border-radius:6px">Header</span>
+            <span style="padding:6px 10px; color:var(--muted)">Muted text</span>
+          </div>
+          <div style="margin-top:8px; font-size:12px">Live preview — colors apply instantly. Stored per browser in localStorage.</div>
+        </div>
+        <div id="theme-msg" class="msg"></div>
       </div>
     </div>
   </div>
