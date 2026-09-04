@@ -546,6 +546,10 @@ function saveCustomTheme(){
 document.addEventListener("DOMContentLoaded", async ()=>{
   applyTheme();
   applyLanguage(localStorage.getItem("lavagna_lang")||"en");
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js', {scope:'./'}).catch(()=>{});
+  }
+  // touch: prevent double-tap zoom on buttons? allow
   bindEvents();
   updateViewButtons();
   if(state.token){
@@ -979,6 +983,7 @@ function renderHistory(){
       e.dataTransfer.setData("text/plain", entry.title);
     });
     div.addEventListener("dragend", ()=>{ state.draggingHistory=null; div.classList.remove("dragging"); });
+    enableTouchDrag(div, ()=>({type:"history", entry}));
     const btn=document.createElement("button");
     btn.textContent=t("history.add.buffer");
     btn.onclick=async()=>{
@@ -1182,6 +1187,8 @@ function renderPlate(p, date, slotId){
       e.dataTransfer.effectAllowed="move";
     });
     div.addEventListener("dragend", ()=>{ state.draggingId=null; div.classList.remove("dragging"); });
+    // touch
+    if(!past) enableTouchDrag(div, ()=>({type:"plate", id:p.id, title:p.title}));
   }
   return div;
 }
@@ -1587,5 +1594,89 @@ function setupTagsAutocomplete(input, acDiv){
   input.addEventListener("focus", ()=>{
     const val=input.value; const parts=val.split(","); const q=parts[parts.length-1].trim();
     if(q && acDiv.children.length>0) acDiv.style.display="block";
+  });
+}
+// --- touch drag & drop (PWA) ---
+let touchGhost=null, touchDropTarget=null;
+function createTouchGhost(text,x,y){
+  clearTouchGhost();
+  touchGhost=document.createElement("div");
+  touchGhost.textContent=text;
+  touchGhost.style.position="fixed";
+  touchGhost.style.left=x+"px"; touchGhost.style.top=y+"px";
+  touchGhost.style.transform="translate(-50%, -50%)";
+  touchGhost.style.padding="8px 12px";
+  touchGhost.style.background="var(--card)";
+  touchGhost.style.border="1px solid var(--border)";
+  touchGhost.style.borderRadius="8px";
+  touchGhost.style.boxShadow="0 4px 12px rgba(0,0,0,0.15)";
+  touchGhost.style.pointerEvents="none";
+  touchGhost.style.zIndex="9999";
+  touchGhost.style.opacity="0.9";
+  touchGhost.style.fontSize="13px";
+  document.body.appendChild(touchGhost);
+}
+function clearTouchGhost(){
+  if(touchGhost){ touchGhost.remove(); touchGhost=null; }
+  if(touchDropTarget){ touchDropTarget.classList.remove("drag-over"); touchDropTarget=null; }
+}
+function findTouchDrop(x,y){
+  const el=document.elementFromPoint(x,y);
+  if(!el) return null;
+  return el.closest(".slot, .buffer-zone, #global-buffer");
+}
+function handleTouchMove(e){
+  if(!touchGhost) return;
+  const t=e.touches[0];
+  touchGhost.style.left=t.clientX+"px";
+  touchGhost.style.top=t.clientY+"px";
+  const drop=findTouchDrop(t.clientX,t.clientY);
+  if(touchDropTarget && touchDropTarget!==drop) touchDropTarget.classList.remove("drag-over");
+  if(drop) drop.classList.add("drag-over");
+  touchDropTarget=drop;
+  e.preventDefault();
+}
+function handleTouchEnd(e){
+  if(!touchGhost && !state.draggingId && !state.draggingHistory) return;
+  const t=e.changedTouches[0];
+  const drop=findTouchDrop(t.clientX,t.clientY);
+  clearTouchGhost();
+  document.removeEventListener("touchmove", handleTouchMove);
+  document.removeEventListener("touchend", handleTouchEnd);
+  if(!drop) { state.draggingId=null; state.draggingHistory=null; return; }
+  const date=drop.dataset.date || drop.closest("[data-date]")?.dataset.date || null;
+  const slotId=drop.dataset.slotId ? parseInt(drop.dataset.slotId) : (drop.closest(".slot")?.dataset.slotId ? parseInt(drop.closest(".slot").dataset.slotId) : null);
+  // history duplicate vs plate move via handleDrop
+  if(state.draggingHistory){
+    handleDrop(date||null, slotId||null);
+  } else if(state.draggingId){
+    handleDrop(date||null, slotId||null);
+  }
+  // cleanup is inside handleDrop
+}
+function enableTouchDrag(el, getData){
+  if(!el) return;
+  el.addEventListener("touchstart", e=>{
+    const t=e.touches[0];
+    const data=getData();
+    if(!data) return;
+    // don't start drag on button clicks
+    if(e.target.closest("button")) return;
+    e.preventDefault();
+    if(data.type==="plate"){
+      state.draggingId=data.id;
+      state.draggingHistory=null;
+      createTouchGhost(data.title||"plate", t.clientX, t.clientY);
+    } else if(data.type==="history"){
+      state.draggingHistory=data.entry;
+      state.draggingId=null;
+      createTouchGhost(data.entry.title, t.clientX, t.clientY);
+    }
+    document.addEventListener("touchmove", handleTouchMove, {passive:false});
+    document.addEventListener("touchend", handleTouchEnd);
+  }, {passive:false});
+  // also handle long-press context menu
+  el.addEventListener("touchend", ()=> {
+    // if not dragging, clear
   });
 }
