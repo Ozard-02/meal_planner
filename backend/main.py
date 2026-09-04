@@ -114,6 +114,16 @@ def get_tag_colors(house: models.House) -> dict:
         pass
     return {}
 
+TAG_PALETTE=["#e53e3e","#dd6b20","#d69e2e","#38a169","#319795","#3182ce","#805ad5","#d53f8c","#718096","#4a5568","#f6ad55","#68d391","#63b3ed","#b794f6"]
+def default_tag_color(tag: str, existing: dict) -> str:
+    import hashlib
+    h=int(hashlib.md5(tag.encode()).hexdigest(),16)
+    for i in range(len(TAG_PALETTE)):
+        col=TAG_PALETTE[(h+i)%len(TAG_PALETTE)]
+        if col not in existing.values():
+            return col
+    return TAG_PALETTE[h%len(TAG_PALETTE)]
+
 def normalize_color(c: str) -> str:
     c=c.strip().lower()
     # allow #rrggbb or #rgb, ensure #
@@ -547,6 +557,21 @@ def create_plate(data: PlateCreateIn, user: models.User = Depends(get_current_us
                 raise HTTPException(400, "invalid date")
     if is_past(date):
         raise HTTPException(400, "past days not modifiable")
+    # auto-assign colors for new tags
+    if tags:
+        house = db.query(models.House).filter(models.House.id==data.house_id).first()
+        if house:
+            colors=get_tag_colors(house)
+            changed=False
+            for t in tags.split(","):
+                tt=t.strip().lower()
+                if tt and tt not in colors:
+                    colors[tt]=default_tag_color(tt, colors)
+                    changed=True
+            if changed:
+                house.tag_colors=json.dumps(colors)
+                db.add(house)
+                # commit after plate to keep same tx
     p = models.Plate(house_id=data.house_id, title=title, note=data.note or "", tags=tags, date=date, slot_id=slot_id, proposed_by=user.id)
     db.add(p)
     db.commit()
@@ -572,7 +597,22 @@ def update_plate(plate_id: int, data: PlateUpdateIn, user: models.User = Depends
     if data.note is not None:
         p.note = data.note
     if data.tags is not None:
-        p.tags = normalize_tags(data.tags)
+        new_tags=normalize_tags(data.tags)
+        # auto-assign colors for new tags in update
+        if new_tags:
+            house=db.query(models.House).filter(models.House.id==p.house_id).first()
+            if house:
+                colors=get_tag_colors(house)
+                changed=False
+                for t in new_tags.split(","):
+                    tt=t.strip().lower()
+                    if tt and tt not in colors:
+                        colors[tt]=default_tag_color(tt, colors)
+                        changed=True
+                if changed:
+                    house.tag_colors=json.dumps(colors)
+                    db.add(house)
+        p.tags = new_tags
     db.commit()
     db.refresh(p)
     stats = plate_vote_stats(db, p.id, user.id)

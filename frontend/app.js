@@ -542,14 +542,24 @@ function saveCustomTheme(){
   const msg=document.getElementById("theme-msg");
   if(msg) { msg.textContent="Custom theme applied"; setTimeout(()=>msg.textContent="",2000); }
 }
+const TAG_PALETTE_FRONT=["#e53e3e","#dd6b20","#d69e2e","#38a169","#319795","#3182ce","#805ad5","#d53f8c","#718096","#4a5568","#f6ad55","#68d391","#63b3ed","#b794f6"];
 function tagColor(tag){
-  const c=state.tagColors[tag.toLowerCase()];
-  return c||null;
+  const key=tag.toLowerCase();
+  if(state.tagColors[key]) return state.tagColors[key];
+  // auto color for already present tags not yet saved — deterministic palette
+  let h=0;
+  for(let i=0;i<key.length;i++) h=(h*31+key.charCodeAt(i))>>>0;
+  // avoid collision with existing colors
+  const used=new Set(Object.values(state.tagColors));
+  for(let i=0;i<TAG_PALETTE_FRONT.length;i++){
+    const col=TAG_PALETTE_FRONT[(h+i)%TAG_PALETTE_FRONT.length];
+    if(!used.has(col)) return col;
+  }
+  return TAG_PALETTE_FRONT[h%TAG_PALETTE_FRONT.length];
 }
 function tagStyle(tag){
-  const c=tagColor(tag);
+  const c=state.tagColors[tag.toLowerCase()] || tagColor(tag);
   if(!c) return "";
-  // auto text color contrast
   const hex=c.replace("#","").trim();
   let fg="#fff";
   if(hex.length===6){
