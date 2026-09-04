@@ -1218,7 +1218,7 @@ function renderWeekly(){
       const add=document.createElement("div");
       add.className="add-plate";
       add.style.padding="8px";
-      add.innerHTML=`<input class="plate-title-input" placeholder="Add to day buffer" data-date="${day.date}"><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
+      add.innerHTML=`<div style="position:relative; flex:1; min-width:120px"><input class="plate-title-input" placeholder="Add to day buffer" data-date="${day.date}" style="width:100%"><div class="autocomplete"></div></div><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags"><button class="plate-add-btn">Add</button>`;
       const titleIn=add.querySelector(".plate-title-input");
       const noteIn=add.querySelector(".plate-note-input");
       const tagsIn=add.querySelector(".plate-tags-input");
@@ -1256,7 +1256,7 @@ function renderSlot(slot, date){
   if(!past){
     const add=document.createElement("div");
     add.className="add-plate";
-    add.innerHTML=`<input class="plate-title-input" placeholder="Add plate to ${escapeHtml(slot.label)}" data-date="${date}" data-slot="${slot.id}"><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags: fish, meat"><button class="plate-add-btn">Add</button><div class="autocomplete"></div>`;
+    add.innerHTML=`<div style="position:relative; flex:1; min-width:120px"><input class="plate-title-input" placeholder="Add plate to ${escapeHtml(slot.label)}" data-date="${date}" data-slot="${slot.id}" style="width:100%"><div class="autocomplete"></div></div><input class="plate-note-input" placeholder="note"><input class="plate-tags-input" placeholder="tags: fish, meat"><button class="plate-add-btn">Add</button>`;
     const titleIn=add.querySelector(".plate-title-input");
     const noteIn=add.querySelector(".plate-note-input");
     const tagsIn=add.querySelector(".plate-tags-input");

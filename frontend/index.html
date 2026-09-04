@@ -94,11 +94,13 @@
       <div class="buffer-desc">Global shared across all days — drag plates here to keep as ideas</div>
       <div id="global-buffer-plates" class="plates"></div>
       <div class="add-plate">
-        <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="">
+        <div style="position:relative; flex:1; min-width:120px">
+          <input class="plate-title-input" placeholder="Add plate to buffer (autocomplete)" data-date="" data-slot="" style="width:100%">
+          <div class="autocomplete"></div>
+        </div>
         <input class="plate-note-input" placeholder="note (optional)">
         <input class="plate-tags-input" placeholder="tags: fish, meat, dessert">
         <button class="plate-add-btn">Add</button>
-        <div class="autocomplete"></div>
       </div>
     </div>
 
@@ -135,11 +137,13 @@
       <h3>Buffer for this day</h3>
       <div id="modal-buffer-plates" class="plates"></div>
       <div class="add-plate">
-        <input class="plate-title-input" id="modal-buffer-title" placeholder="Add plate to day buffer">
+        <div style="position:relative; flex:1; min-width:120px">
+          <input class="plate-title-input" id="modal-buffer-title" placeholder="Add plate to day buffer" style="width:100%">
+          <div class="autocomplete" id="modal-buffer-ac"></div>
+        </div>
         <input class="plate-note-input" id="modal-buffer-note" placeholder="note (optional)">
         <input class="plate-tags-input" id="modal-buffer-tags" placeholder="tags">
         <button id="modal-buffer-add">Add</button>
-        <div class="autocomplete" id="modal-buffer-ac"></div>
       </div>
     </div>
     <div class="add-slot">
