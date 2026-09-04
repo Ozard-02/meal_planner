@@ -475,11 +475,16 @@ function applyLanguage(lang){
 const themePresets={
   light:{bg:"#fafaf7",fg:"#222222",card:"#ffffff",header:"#ffffff",accent:"#222222","accent-fg":"#ffffff",muted:"#666666",border:"#e8e8e8"},
   dark:{bg:"#1a1a1e",fg:"#eeeeee",card:"#2a2a2e",header:"#222222",accent:"#e0e0e0","accent-fg":"#1a1a1e",muted:"#aaaaaa",border:"#333333"},
-  warm:{bg:"#fdf6e3",fg:"#3a2d1a",card:"#fffaf0",header:"#fff4d6",accent:"#8b5a2b","accent-fg":"#ffffff",muted:"#8a7a5a",border:"#e8dcc3"}
+  warm:{bg:"#fdf6e3",fg:"#3a2d1a",card:"#fffaf0",header:"#fff4d6",accent:"#8b5a2b","accent-fg":"#ffffff",muted:"#8a7a5a",border:"#e8dcc3"},
+  sage:{bg:"#f4f6f0",fg:"#2c3527",card:"#ffffff",header:"#e8ede2",accent:"#5c7a3f","accent-fg":"#ffffff",muted:"#7a8a6a",border:"#d0d8c8"},
+  ocean:{bg:"#eef2f7",fg:"#1e2d3d",card:"#ffffff",header:"#dde5ef",accent:"#3a6b8a","accent-fg":"#ffffff",muted:"#6a8498",border:"#c8d4e0"},
+  terracotta:{bg:"#faf5f0",fg:"#3d2c24",card:"#ffffff",header:"#f0e4d8",accent:"#b85c38","accent-fg":"#ffffff",muted:"#9a7a68",border:"#dcc8b8"},
+  nord:{bg:"#f0f4f8",fg:"#334e68",card:"#ffffff",header:"#d9e2ec",accent:"#4a6fa5","accent-fg":"#ffffff",muted:"#7b8da0",border:"#c8d6e2"},
+  sunset:{bg:"#fffaf0",fg:"#4a3721",card:"#ffffff",header:"#fff3cd",accent:"#c78c06","accent-fg":"#ffffff",muted:"#9a8060",border:"#e8dcc0"}
 };
 function applyTheme(){
   const th = localStorage.getItem("lavagna_theme") || "light";
-  document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom");
+  document.body.classList.remove("theme-dark","theme-warm","theme-light","theme-custom","theme-sage","theme-ocean","theme-terracotta","theme-nord","theme-sunset");
   document.body.classList.add("theme-"+th);
   // reset custom inline vars on both html and body (body inline overrides class)
   const vars=["bg","fg","card","header","accent","accent-fg","muted","border"];

@@ -1,6 +1,11 @@
 :root { --bg:#fafaf7; --fg:#222; --card:#fff; --header:#fff; --accent:#222; --accent-fg:#fff; --muted:#666; --border:#e8e8e8; }
 body.theme-dark { --bg:#1a1a1e; --fg:#eee; --card:#2a2a2e; --header:#222; --accent:#e0e0e0; --accent-fg:#1a1a1e; --muted:#aaa; --border:#333; }
 body.theme-warm { --bg:#fdf6e3; --fg:#3a2d1a; --card:#fffaf0; --header:#fff4d6; --accent:#8b5a2b; --accent-fg:#fff; --muted:#8a7a5a; --border:#e8dcc3; }
+body.theme-sage { --bg:#f4f6f0; --fg:#2c3527; --card:#fff; --header:#e8ede2; --accent:#5c7a3f; --accent-fg:#fff; --muted:#7a8a6a; --border:#d0d8c8; }
+body.theme-ocean { --bg:#eef2f7; --fg:#1e2d3d; --card:#fff; --header:#dde5ef; --accent:#3a6b8a; --accent-fg:#fff; --muted:#6a8498; --border:#c8d4e0; }
+body.theme-terracotta { --bg:#faf5f0; --fg:#3d2c24; --card:#fff; --header:#f0e4d8; --accent:#b85c38; --accent-fg:#fff; --muted:#9a7a68; --border:#dcc8b8; }
+body.theme-nord { --bg:#f0f4f8; --fg:#334e68; --card:#fff; --header:#d9e2ec; --accent:#4a6fa5; --accent-fg:#fff; --muted:#7b8da0; --border:#c8d6e2; }
+body.theme-sunset { --bg:#fffaf0; --fg:#4a3721; --card:#fff; --header:#fff3cd; --accent:#c78c06; --accent-fg:#fff; --muted:#9a8060; --border:#e8dcc0; }
 * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
 body { margin:0; background:var(--bg); color:var(--fg); }
 header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:var(--header); border-bottom:1px solid #e8e8e8; position:sticky; top:0; z-index:10; }
@@ -145,6 +150,8 @@ button:hover { opacity:0.92; filter:brightness(1.05); }
 #buffer-toggle.active { background:#22c55e !important; color:#fff !important; border-color:#16a34a !important; }
 .tag { display:inline-block; padding:2px 7px; margin:2px; border-radius:10px; background:#e8e8e8; color:#333; font-size:11px; border:1px solid #ddd; }
 body.theme-dark .tag { background:#444; color:#eee; border-color:#555; }
+body.theme-ocean .tag { background:#d0dce8; color:#1e2d3d; border-color:#b8ccd8; }
+body.theme-nord .tag { background:#d0dce8; color:#334e68; border-color:#b8ccd8; }
 .plate-tags { margin-top:4px; display:flex; flex-wrap:wrap; gap:4px; }
 .history-item { display:flex; justify-content:space-between; align-items:center; padding:8px; border:1px solid #eee; border-radius:6px; margin:4px 0; background:var(--card); }
 .history-item button { font-size:11px; padding:4px 8px; }
