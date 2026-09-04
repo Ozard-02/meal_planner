@@ -1169,8 +1169,9 @@ async function handleDrop(targetDate, targetSlotId){
     if(targetDate && isPast(targetDate)){ alert("past days not modifiable"); return; }
     try{
       await api("/api/plates",{method:"POST", body:JSON.stringify({house_id:state.currentHouseId, title:entry.title, note:entry.example_note||"", tags:entry.tags.join(","), date:targetDate||null, slot_id:targetSlotId||null})});
-      loadCalendar(); loadHistory();
-      if(state.selectedDay) refreshModal();
+      await loadCalendar(); await loadHistory();
+      if(state.selectedDay) await refreshModal();
+      else render();
     }catch(e){ alert(e.message); }
   } else if(state.draggingId){
     await movePlate(state.draggingId, targetDate, targetSlotId);
@@ -1311,11 +1312,11 @@ function renderPlate(p, date, slotId){
       if(nn===null) return;
       const ng=prompt("Edit tags (comma separated: fish, meat, dessert)", (p.tags||[]).join(", "));
       if(ng===null) return;
-      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn, tags:ng})}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(err){ alert(err.message); }
+      try{ await api(`/api/plates/${p.id}`,{method:"PUT", body:JSON.stringify({title:nt, note:nn, tags:ng})}); await loadCalendar(); await loadHistory(); if(state.selectedDay) await refreshModal(); else render(); }catch(err){ alert(err.message); }
     };
     delBtn.onclick=async(e)=>{
       e.stopPropagation();
-      if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); loadCalendar(); loadHistory(); if(state.selectedDay) openModal(state.selectedDay); }catch(err){ alert(err.message);} }
+      if(confirm("Delete plate?")){ try{ await api(`/api/plates/${p.id}`,{method:"DELETE"}); await loadCalendar(); await loadHistory(); if(state.selectedDay) await refreshModal(); else render(); }catch(err){ alert(err.message);} }
     };
     editBtn.addEventListener("mousedown", e=>e.stopPropagation());
     delBtn.addEventListener("mousedown", e=>e.stopPropagation());
@@ -1326,7 +1327,7 @@ function renderPlate(p, date, slotId){
         e.stopPropagation();
         const v=parseInt(btn.dataset.v);
         const newVal = p.my_vote===v ? 0 : v;
-        try{ await api(`/api/plates/${p.id}/vote`,{method:"POST", body:JSON.stringify({value:newVal})}); loadCalendar(); if(state.selectedDay) refreshModal(); }catch(err){ alert(err.message); }
+        try{ await api(`/api/plates/${p.id}/vote`,{method:"POST", body:JSON.stringify({value:newVal})}); await loadCalendar(); if(state.selectedDay) await refreshModal(); else render(); }catch(err){ alert(err.message); }
       };
     });
     div.addEventListener("dragstart", e=>{
@@ -1628,8 +1629,9 @@ async function addPlateFromInput(titleIn, noteIn, date, slotId, acEl, tagsIn){
   try{
     await api("/api/plates",{method:"POST", body:JSON.stringify(body)});
     titleIn.value=""; if(noteIn) noteIn.value=""; if(tagsIn) tagsIn.value=""; if(acEl) acEl.style.display="none";
-    loadCalendar(); loadHistory();
-    if(state.selectedDay) refreshModal();
+    await loadCalendar(); await loadHistory();
+    if(state.selectedDay) await refreshModal();
+    else render(); // ensure overview card (weekly day column) updates live even without modal
   }catch(e){ alert(e.message); }
 }
 async function movePlate(plateId, toDate, toSlotId){
@@ -1638,8 +1640,9 @@ async function movePlate(plateId, toDate, toSlotId){
   if(toDate && isPast(toDate)){ alert("past days not modifiable (target)"); return; }
   try{
     await api(`/api/plates/${plateId}/move`,{method:"POST", body:JSON.stringify({to_date: toDate||null, to_slot_id: toSlotId||null})});
-    loadCalendar(); loadHistory();
-    if(state.selectedDay) refreshModal();
+    await loadCalendar(); await loadHistory();
+    if(state.selectedDay) await refreshModal();
+    else render();
   }catch(e){ alert(e.message); }
 }
 function findPlateDate(plateId){
@@ -1660,8 +1663,9 @@ async function addSlot(){
   try{
     await api("/api/slots",{method:"POST", body:JSON.stringify({house_id: state.currentHouseId, date: state.selectedDay, label})});
     document.getElementById("new-slot-label").value="";
-    loadCalendar();
-    refreshModal();
+    await loadCalendar();
+    await refreshModal();
+    render();
   }catch(e){ alert(e.message); }
 }
 
