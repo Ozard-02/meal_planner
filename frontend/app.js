@@ -404,7 +404,11 @@ function applyLanguage(lang){
   if(sci && sci.innerHTML.includes("Invite code")) sci.innerHTML=`${t("settings.house.invite")} <code id="settings-invite">${document.getElementById("settings-invite")?.textContent||""}</code> <button id="copy-invite" style="padding:2px 6px; font-size:12px">${t("settings.house.copy")}</button>`;
   // rebind copy after innerHTML
   const ci2=document.getElementById("copy-invite");
-  if(ci2) ci2.onclick=()=>{ const code=document.getElementById("settings-invite").textContent; navigator.clipboard.writeText(code).then(()=> alert("copied "+code)); };
+  if(ci2) ci2.onclick=()=>{
+    const code=(document.getElementById("settings-invite")?.textContent||"").trim() || (document.getElementById("house-invite")?.textContent||"").replace("code:","").trim();
+    if(!code){ alert("no code to copy"); return; }
+    navigator.clipboard.writeText(code).then(()=> alert("copied "+code)).catch(()=> prompt("Copy this code:", code));
+  };
   const sm=document.querySelector("#settings-house .card:nth-child(1) div:nth-child(3)");
   if(sm && sm.textContent.includes("Members")) sm.innerHTML=`${t("settings.house.members")} <span id="settings-members">${document.getElementById("settings-members")?.textContent||""}</span>`;
   const sbt=document.getElementById("settings-buffer-toggle");
@@ -789,8 +793,16 @@ function bindEvents(){
   };
   const ci=document.getElementById("copy-invite");
   if(ci) ci.onclick=()=>{
-    const code=document.getElementById("settings-invite").textContent;
-    navigator.clipboard.writeText(code).then(()=> alert("copied "+code));
+    const code=(document.getElementById("settings-invite")?.textContent||"").trim() || (document.getElementById("house-invite")?.textContent||"").replace("code:","").trim();
+    if(!code){ alert("no code to copy"); return; }
+    navigator.clipboard.writeText(code).then(()=> alert("copied "+code)).catch(()=> prompt("Copy this code:", code));
+  };
+  const chi2=document.getElementById("copy-house-invite");
+  if(chi2) chi2.onclick=()=>{
+    const txt=document.getElementById("house-invite")?.textContent||"";
+    const code=txt.replace("code:","").trim() || document.getElementById("settings-invite")?.textContent?.trim() || "";
+    if(!code){ alert("no code to copy"); return; }
+    navigator.clipboard.writeText(code).then(()=> alert("copied "+code)).catch(()=> prompt("Copy this code:", code));
   };
   const ta=document.getElementById("template-add-btn");
   if(ta) ta.onclick=templateAddField;
