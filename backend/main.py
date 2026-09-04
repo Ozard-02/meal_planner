@@ -726,7 +726,6 @@ def tags_autocomplete(house_id: int = Query(...), q: str = Query("", alias="quer
     q = q.strip().lower()
     if not q:
         return []
-    # ponytail: tags are comma-separated lower strings — aggregate frequencies in Python (few hundred plates max)
     rows = db.query(models.Plate.tags).filter(models.Plate.house_id==house_id).all()
     freq={}
     for (tags_str,) in rows:
@@ -737,10 +736,23 @@ def tags_autocomplete(house_id: int = Query(...), q: str = Query("", alias="quer
             if not tt:
                 continue
             freq[tt]=freq.get(tt,0)+1
-    # filter prefix
     matched=[(tag,cnt) for tag,cnt in freq.items() if tag.startswith(q)]
     matched.sort(key=lambda x: (-x[1], x[0]))
     return [tag for tag,cnt in matched[:limit]]
+
+@app.get("/api/tags")
+def get_all_tags(house_id: int = Query(...), user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_membership(user.id, house_id, db)
+    rows = db.query(models.Plate.tags).filter(models.Plate.house_id==house_id).all()
+    tags_set=set()
+    for (tags_str,) in rows:
+        if not tags_str:
+            continue
+        for t in tags_str.split(","):
+            tt=t.strip().lower()
+            if tt:
+                tags_set.add(tt)
+    return sorted(tags_set)
 
 # --- history ---
 @app.get("/api/plates/history")

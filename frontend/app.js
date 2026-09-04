@@ -573,19 +573,28 @@ async function renderTagColors(){
   const list=document.getElementById("tag-colors-list");
   const preview=document.getElementById("tag-colors-preview");
   if(!list) return;
-  list.innerHTML="";
-  // collect tags from history + current tagColors keys
-  const tagsSet=new Set(Object.keys(state.tagColors));
-  state.history.forEach(h=> h.tags.forEach(t=> tagsSet.add(t.toLowerCase())));
-  // also from calendar plates
-  if(state.calendar){
-    state.calendar.days.forEach(d=>{
-      d.slots.forEach(s=> s.plates.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase()))));
-      d.day_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
-    });
-    state.calendar.global_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
+  list.innerHTML="<div style='font-size:12px;color:var(--muted)'>Loading tags…</div>";
+  // fetch all distinct tags from server for complete list of already used tags
+  let allTags=[];
+  try{
+    allTags=await api(`/api/tags?house_id=${state.currentHouseId}`);
+  }catch(e){
+    // fallback to local collection
+    const tagsSet=new Set(Object.keys(state.tagColors));
+    state.history.forEach(h=> h.tags.forEach(t=> tagsSet.add(t.toLowerCase())));
+    if(state.calendar){
+      state.calendar.days.forEach(d=>{
+        d.slots.forEach(s=> s.plates.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase()))));
+        d.day_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
+      });
+      state.calendar.global_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
+    }
+    allTags=[...tagsSet];
   }
+  // merge with current tagColors keys to show even tags with colors but no plates yet
+  const tagsSet=new Set([...allTags.map(t=>t.toLowerCase()), ...Object.keys(state.tagColors)]);
   const tags=[...tagsSet].sort();
+  list.innerHTML="";
   if(tags.length===0){
     list.innerHTML="<div style='font-size:13px;color:var(--muted)'>No tags yet — create a plate with tags like fish, meat.</div>";
   } else {
