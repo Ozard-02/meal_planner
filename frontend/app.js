@@ -1667,51 +1667,30 @@ async function addSlot(){
 
 // --- autocomplete ---
 let acTimeout=null;
-function setAutocompleteVisible(acDiv, visible){
-  if(!acDiv) return;
-  acDiv.style.display=visible?"block":"none";
-  // lift parent slot/day-column above siblings (dinner card) when visible
-  const slot=acDiv.closest(".slot");
-  const col=acDiv.closest(".day-column");
-  if(visible){
-    if(slot) slot.classList.add("has-autocomplete");
-    if(col) col.classList.add("has-autocomplete");
-    acDiv.closest(".add-plate")?.classList.add("has-autocomplete");
-  } else {
-    // delay removal to allow click
-    setTimeout(()=>{
-      if(acDiv.style.display==="none"){
-        if(slot) slot.classList.remove("has-autocomplete");
-        if(col) col.classList.remove("has-autocomplete");
-        acDiv.closest(".add-plate")?.classList.remove("has-autocomplete");
-      }
-    },250);
-  }
-}
 function setupAutocomplete(input, acDiv){
   if(!input || !acDiv) return;
   input.addEventListener("input", ()=>{
     const q=input.value.trim();
     if(acTimeout) clearTimeout(acTimeout);
-    if(!q || q.length<1){ setAutocompleteVisible(acDiv,false); return; }
+    if(!q || q.length<1){ acDiv.style.display="none"; return; }
     acTimeout=setTimeout(async()=>{
       try{
         const res=await api(`/api/plates/autocomplete?house_id=${state.currentHouseId}&query=${encodeURIComponent(q)}&limit=8`);
-        if(res.length===0){ setAutocompleteVisible(acDiv,false); return; }
+        if(res.length===0){ acDiv.style.display="none"; return; }
         acDiv.innerHTML="";
         res.forEach(t=>{
           const d=document.createElement("div");
           d.textContent=t;
-          d.onclick=()=>{ input.value=t; setAutocompleteVisible(acDiv,false); };
+          d.onclick=()=>{ input.value=t; acDiv.style.display="none"; };
           acDiv.appendChild(d);
         });
-        setAutocompleteVisible(acDiv,true);
-      }catch(e){ setAutocompleteVisible(acDiv,false); }
+        acDiv.style.display="block";
+      }catch(e){ acDiv.style.display="none"; }
     },200);
   });
-  input.addEventListener("blur", ()=> setTimeout(()=> setAutocompleteVisible(acDiv,false),200));
+  input.addEventListener("blur", ()=> setTimeout(()=> acDiv.style.display="none",200));
   input.addEventListener("focus", ()=>{
-    if(acDiv.children.length>0) setAutocompleteVisible(acDiv,true);
+    if(acDiv.children.length>0) acDiv.style.display="block";
   });
 }
 let tagsAcTimeout=null;
@@ -1735,33 +1714,35 @@ function setupTagsAutocomplete(input, acDiv){
     const parts=val.split(",");
     const q=parts[parts.length-1].trim();
     if(tagsAcTimeout) clearTimeout(tagsAcTimeout);
-    if(!q){ setAutocompleteVisible(acDiv,false); return; }
+    if(!q){ acDiv.style.display="none"; return; }
     tagsAcTimeout=setTimeout(async()=>{
       try{
         const res=await api(`/api/tags/autocomplete?house_id=${state.currentHouseId}&query=${encodeURIComponent(q)}&limit=8`);
-        if(res.length===0){ setAutocompleteVisible(acDiv,false); return; }
+        if(res.length===0){ acDiv.style.display="none"; return; }
         acDiv.innerHTML="";
         res.forEach(t=>{
           const d=document.createElement("div");
           d.textContent=t;
           d.onclick=()=>{
             parts[parts.length-1]=" "+t;
+            // rebuild comma separated, trim leading spaces
             let newVal=parts.map((p,i)=> i===parts.length-1 ? t : p.trim()).join(", ");
+            // keep trailing comma space for next tag?
             if(!newVal.endsWith(", ")) newVal+=", ";
             input.value=newVal;
-            setAutocompleteVisible(acDiv,false);
+            acDiv.style.display="none";
             input.focus();
           };
           acDiv.appendChild(d);
         });
-        setAutocompleteVisible(acDiv,true);
-      }catch(e){ setAutocompleteVisible(acDiv,false); }
+        acDiv.style.display="block";
+      }catch(e){ acDiv.style.display="none"; }
     },200);
   });
-  input.addEventListener("blur", ()=> setTimeout(()=> setAutocompleteVisible(acDiv,false),250));
+  input.addEventListener("blur", ()=> setTimeout(()=> acDiv.style.display="none",250));
   input.addEventListener("focus", ()=>{
     const val=input.value; const parts=val.split(","); const q=parts[parts.length-1].trim();
-    if(q && acDiv.children.length>0) setAutocompleteVisible(acDiv,true);
+    if(q && acDiv.children.length>0) acDiv.style.display="block";
   });
 }
 // --- touch drag & drop (PWA) ---
