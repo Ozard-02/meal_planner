@@ -1672,25 +1672,46 @@ function setupAutocomplete(input, acDiv){
   input.addEventListener("input", ()=>{
     const q=input.value.trim();
     if(acTimeout) clearTimeout(acTimeout);
-    if(!q || q.length<1){ acDiv.style.display="none"; return; }
+    if(!q || q.length<1){ setAutocompleteVisible(acDiv,false); return; }
     acTimeout=setTimeout(async()=>{
       try{
         const res=await api(`/api/plates/autocomplete?house_id=${state.currentHouseId}&query=${encodeURIComponent(q)}&limit=8`);
-        if(res.length===0){ acDiv.style.display="none"; return; }
+        if(res.length===0){ setAutocompleteVisible(acDiv,false); return; }
         acDiv.innerHTML="";
         res.forEach(t=>{
           const d=document.createElement("div");
           d.textContent=t;
-          d.onclick=()=>{ input.value=t; acDiv.style.display="none"; };
+          d.onclick=()=>{
+            input.value=t;
+            setAutocompleteVisible(acDiv,false);
+            // auto-insert correct tags from history for this title (case-insensitive)
+            const entry=state.history.find(h=> h.title.toLowerCase()===t.toLowerCase());
+            if(entry && entry.tags && entry.tags.length){
+              const addPlate=input.closest(".add-plate");
+              const tagsInput=addPlate ? addPlate.querySelector(".plate-tags-input") : null;
+              if(tagsInput){
+                // if tags field empty or its tag not in history, fill; else append missing?
+                const existing=tagsInput.value.trim();
+                if(!existing){
+                  tagsInput.value=entry.tags.join(", ");
+                } else {
+                  // append missing tags from history that not already present
+                  const cur=existing.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+                  const missing=entry.tags.filter(tt=> !cur.includes(tt.toLowerCase()));
+                  if(missing.length) tagsInput.value=existing + (existing.endsWith(",")?" ":", ")+missing.join(", ");
+                }
+              }
+            }
+          };
           acDiv.appendChild(d);
         });
-        acDiv.style.display="block";
-      }catch(e){ acDiv.style.display="none"; }
+        setAutocompleteVisible(acDiv,true);
+      }catch(e){ setAutocompleteVisible(acDiv,false); }
     },200);
   });
-  input.addEventListener("blur", ()=> setTimeout(()=> acDiv.style.display="none",200));
+  input.addEventListener("blur", ()=> setTimeout(()=> setAutocompleteVisible(acDiv,false),200));
   input.addEventListener("focus", ()=>{
-    if(acDiv.children.length>0) acDiv.style.display="block";
+    if(acDiv.children.length>0) setAutocompleteVisible(acDiv,true);
   });
 }
 let tagsAcTimeout=null;
