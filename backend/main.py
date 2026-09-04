@@ -114,6 +114,34 @@ def get_tag_colors(house: models.House) -> dict:
         pass
     return {}
 
+def ensure_tag_colors_for_house(db: Session, house: models.House):
+    # auto-assign colors for already present tags that have no entry (old plates)
+    try:
+        colors=get_tag_colors(house)
+        rows=db.query(models.Plate.tags).filter(models.Plate.house_id==house.id).all()
+        tags_set=set()
+        for (tags_str,) in rows:
+            if not tags_str:
+                continue
+            for t in tags_str.split(","):
+                tt=t.strip().lower()
+                if tt:
+                    tags_set.add(tt)
+        changed=False
+        for tag in tags_set:
+            if tag not in colors:
+                colors[tag]=default_tag_color(tag, colors)
+                changed=True
+        if changed:
+            house.tag_colors=json.dumps(colors)
+            db.add(house)
+            db.commit()
+            db.refresh(house)
+        return colors
+    except Exception as e:
+        print("ensure_tag_colors failed", e)
+        return get_tag_colors(house)
+
 TAG_PALETTE=["#e53e3e","#dd6b20","#d69e2e","#38a169","#319795","#3182ce","#805ad5","#d53f8c","#718096","#4a5568","#f6ad55","#68d391","#63b3ed","#b794f6"]
 def default_tag_color(tag: str, existing: dict) -> str:
     import hashlib
@@ -270,7 +298,8 @@ def list_houses(user: models.User = Depends(get_current_user), db: Session = Dep
     res=[]
     for h in houses:
         tpl=get_template_labels(h)
-        res.append({"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": tpl, "tag_colors": get_tag_colors(h), "created_by": h.created_by})
+        colors=ensure_tag_colors_for_house(db, h)
+        res.append({"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": tpl, "tag_colors": colors, "created_by": h.created_by})
     return res
 
 @app.post("/api/houses")
@@ -289,7 +318,7 @@ def create_house(data: HouseCreateIn, user: models.User = Depends(get_current_us
     db.refresh(h)
     db.add(models.Membership(user_id=user.id, house_id=h.id))
     db.commit()
-    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h)}
+    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": ensure_tag_colors_for_house(db, h)}
 
 @app.post("/api/houses/join")
 def join_house(data: HouseJoinIn, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -301,7 +330,8 @@ def join_house(data: HouseJoinIn, user: models.User = Depends(get_current_user),
     if not existing:
         db.add(models.Membership(user_id=user.id, house_id=h.id))
         db.commit()
-    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h)}
+    colors=ensure_tag_colors_for_house(db, h)
+    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": colors}
 
 @app.get("/api/houses/{house_id}")
 def get_house(house_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -311,7 +341,8 @@ def get_house(house_id: int, user: models.User = Depends(get_current_user), db: 
         raise HTTPException(404, "not found")
     members = db.query(models.Membership).filter(models.Membership.house_id==house_id).all()
     users = db.query(models.User).filter(models.User.id.in_([m.user_id for m in members])).all() if members else []
-    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h), "created_by": h.created_by, "members": [{"id": u.id, "username": u.username} for u in users]}
+    colors=ensure_tag_colors_for_house(db, h)
+    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": colors, "created_by": h.created_by, "members": [{"id": u.id, "username": u.username} for u in users]}
 
 @app.put("/api/houses/{house_id}")
 def update_house(house_id: int, data: HouseUpdateIn, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -328,7 +359,8 @@ def update_house(house_id: int, data: HouseUpdateIn, user: models.User = Depends
         h.name=name
     db.commit()
     db.refresh(h)
-    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h)}
+    colors=ensure_tag_colors_for_house(db, h)
+    return {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": colors}
 
 @app.put("/api/houses/{house_id}/buffer")
 def set_buffer(house_id: int, data: BufferModeIn, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -394,7 +426,8 @@ def set_template(house_id: int, data: TemplateIn, apply_future: bool = False, us
                     db.delete(s)
         db.commit()
     db.refresh(h)
-    return {"id": h.id, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h)}
+    colors=ensure_tag_colors_for_house(db, h)
+    return {"id": h.id, "daily_template": get_template_labels(h), "tag_colors": colors}
 
 @app.get("/api/houses/{house_id}/tag-colors")
 def get_tag_colors_api(house_id: int, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -402,7 +435,7 @@ def get_tag_colors_api(house_id: int, user: models.User = Depends(get_current_us
     h = db.query(models.House).filter(models.House.id==house_id).first()
     if not h:
         raise HTTPException(404, "not found")
-    return get_tag_colors(h)
+    return ensure_tag_colors_for_house(db, h)
 
 @app.put("/api/houses/{house_id}/tag-colors")
 def set_tag_colors(house_id: int, data: TagColorsIn, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -492,7 +525,8 @@ def get_calendar(house_id: int = Query(...), from_date: str = Query(..., alias="
         days.append({"date": d, "slots": day_slots, "day_buffer": day_buf})
     glob = [serialize_plate(p) for p in global_buffer]
     glob.sort(key=lambda x: (-x["score"], x["created_at"] or ""))
-    return {"house": {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": get_tag_colors(h)}, "days": days, "global_buffer": glob}
+    colors=ensure_tag_colors_for_house(db, h)
+    return {"house": {"id": h.id, "name": h.name, "invite_code": h.invite_code, "buffer_mode": h.buffer_mode, "daily_template": get_template_labels(h), "tag_colors": colors}, "days": days, "global_buffer": glob}
 
 # --- slots ---
 @app.post("/api/slots")
