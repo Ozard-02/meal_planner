@@ -56,9 +56,9 @@ button:hover { opacity:0.92; filter:brightness(1.05); }
 .plate-actions button { font-size:11px; padding:2px 6px; background:#eee; color:#222; }
 .add-plate { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; position:relative; z-index:5; }
 .add-plate input { flex:1; min-width:120px; }
-.add-plate:has(.autocomplete[style*="block"]) { z-index:50; }
-.day-column:has(.autocomplete[style*="block"]) { z-index:20; }
-.slot:has(.autocomplete[style*="block"]) { z-index:30; }
+.add-plate.has-autocomplete { z-index:50; }
+.day-column.has-autocomplete { z-index:20; position:relative; }
+.slot.has-autocomplete { z-index:30; }
 .autocomplete { position:absolute; top:100%; left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:6px; z-index:100; max-height:160px; overflow:auto; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.12); }
 .autocomplete div { padding:6px 10px; cursor:pointer; font-size:13px; }
 .autocomplete div:hover, .autocomplete div.active { background:#f0f0f0; }
