@@ -64,7 +64,7 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"
 // --- theme ---
 const translations={
   en:{
-    "header.title":"Lavagna Cibo",
+    "header.title":"NAME TO BE DEFINED",
     "header.settings":"Settings",
     "header.logout":"Logout",
     "auth.login":"Login",
@@ -163,7 +163,7 @@ const translations={
     "history.remove":"Remove from History permanently"
   },
   it:{
-    "header.title":"Lavagna Cibo",
+    "header.title":"NAME TO BE DEFINED",
     "header.settings":"Impostazioni",
     "header.logout":"Esci",
     "auth.login":"Accedi",
@@ -272,7 +272,16 @@ function applyLanguage(lang){
   if(sel) sel.value=currentLang;
   // header
   const h1=document.querySelector("header h1");
-  if(h1) h1.textContent="🍝 "+t("header.title");
+  if(h1){
+    const img=h1.querySelector("img");
+    const title=t("header.title");
+    if(img){
+      // keep logo, update text
+      h1.innerHTML=`<img src="${img.getAttribute("src")}" alt="logo" style="width:clamp(28px, 6vw, 40px); height:clamp(28px, 6vw, 40px); border-radius:8px; object-fit:cover; flex-shrink:0"> ${title}`;
+    } else {
+      h1.textContent=title;
+    }
+  }
   const sb=document.getElementById("settings-btn");
   if(sb) sb.textContent="⚙ "+t("header.settings");
   const lb=document.getElementById("logout-btn");
