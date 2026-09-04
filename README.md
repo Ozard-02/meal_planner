@@ -50,7 +50,7 @@ SECRET_KEY=change-me-please-use-long-random-string  # JWT HMAC, 32+ chars
 - Native HTML5 `draggable` + `dragover/drop` (no lib). Slots and buffer are drop zones, plates draggable (except past). Moving any member allowed (`POST /api/plates/{id}/move {to_date,to_slot_id}`) — `null` → global buffer, `date` without slot → day buffer. History drag **duplicates** (`POST /api/plates` with same `title/tags`), not move, so history never loses entries.
 
 ### Buffer
-- **Global** (`date=null`, shared across all days) vs **per-day** (`date=set, slot=null`) toggle per house `PUT /api/houses/{id}/buffer {mode}`. Header checkbox + Settings → House sync. Global shown at bottom (always), per-day shows inside each day column + modal buffer when `per_day`.
+- **Global** (`date=null`, shared across all days) vs **per-day** (`date=set, slot=null`) toggle per house `PUT /api/houses/{id}/buffer {mode}`. **Button `daily` inside `Buffer` pill top** `frontend/index.html:84` `#buffer-toggle` `green #22c55e` when `per_day` active vs `gray #e5e7eb` when `global` (`style.css:43` `#buffer-toggle.active`), `Settings → House` checkbox sync. Global shown side-by-side with `History` (`#buffer-history-row` `1fr 1fr`), per-day shows inside each day column + modal buffer when `per_day`.
 
 ### Daily template
 - House `daily_template` JSON `TEXT` default `["lunch","dinner"]` (`models.py:13`).
@@ -63,17 +63,27 @@ SECRET_KEY=change-me-please-use-long-random-string  # JWT HMAC, 32+ chars
 ### History + buffer layout
 - `#buffer-history-row` grid side-by-side, not stacked. Buffer left, history right, both `margin:0` inside row, responsive single column `<900px`.
 
+### Header
+- `Lavagna Cibo` left with logo `icons/icon-192.png?v=3` `32px` `clamp(28-40px)` beside title `frontend/index.html:15`, `user-info` moved left near title (`header` flex `gap:12px` `color:var(--muted)`), right `header-actions` only `Settings`/`Logout`. `code:{invite}` `12px` `#888` `margin-left:8px` in `house-switcher` (`select` + `code` + `Houses` button removed from header as requested, now via `Settings → House`).
+
 ### Settings & theme
-- Header `⚙ Settings` opens `#settings-modal` (fixed overlay same as day modal `style.css:85` `#day-modal,#settings-modal`). Tabs:
-  - **User:** shows `username`, change username (`PUT /api/me {username}`), change password (`password` + `new_password`), house list with `Switch` active marker.
-  - **House:** rename (`PUT /api/houses/{id} {name}`), invite code copy, members list (`GET /api/houses/{id}`), buffer toggle.
+- Header `⚙ Settings` opens `#settings-modal` (fixed overlay `style.css:85` `#day-modal,#settings-modal` `position:fixed`). Tabs: `User`/`House`/`Template`/`Theme`/`Tags`/`Language`.
+  - **User:** shows `username`, change username (`PUT /api/me {username}`), change password (`password` + `new_password`), house list with `Switch` active marker, **add second house** `Create/Join` also in `House` tab (`#settings-create-name`/`#settings-join-code`).
+  - **House:** rename (`PUT /api/houses/{id} {name}`), invite code copy (`#settings-invite` + `Copy`), members list, buffer toggle checkbox sync with pill button.
   - **Template:** editor as above.
-  - **Theme:** CSS vars `:root` (`--bg/--fg/--card/--header`) + `body.theme-dark/warm` (`style.css:1`), `select` + `color` accent picker stored `localStorage lavagna_theme/accent` via `app.js:58` `applyTheme()`.
-- User can select active house via header select or Settings → User.
+  - **Theme:** CSS vars `:root` (`--bg/--fg/--card/--header/--accent/--accent-fg/--muted/--border`) + `body.theme-dark/warm/custom` (`style.css:1`), `select` `light|dark|warm|custom` + 8 pickers `bg/fg/card/header/accent/accent-fg/muted/border` + `Apply custom`/`Reset`/`Copy CSS` + live preview `frontend/index.html:208` `#theme-custom-grid`, stored `localStorage` `lavagna_theme` + `lavagna_custom_*` via `app.js:64` `applyTheme()` now sets `--vars` on both `html` and `body` so `custom` actually paints (was only `html`, `body` class overrode, now `green/gray` `daily` button also uses `var(--accent)`).
+  - **Tags:** per-house `tag_colors` `TEXT JSON` `models.py:18` `House.tag_colors`, `PUT/GET /api/houses/{id}/tag-colors` `normalize_color()` `TAG_PALETTE`, pills `background` from `tagStyle()` with auto contrast `fg`, `Settings → Tags` lists **all already used tags** via `GET /api/tags?house_id` + `history`/`calendar`, color picker per tag, `Save`/`Reset`, preview, auto-assign `default_tag_color()` on new plate + `ensure_tag_colors_for_house()` for old plates.
+  - **Language:** `en|it` `frontend/app.js:64` `translations` `t(k)`, `select #language-select` in `Settings → Language`, stored `lavagna_lang`, `applyLanguage()` rewrites all `textContent`/`placeholder` (header, auth, houses, calendar, buffer, history, day modal, settings).
+- User can select active house via header `select` or `Settings → User` / `Houses` button removed from header as requested.
+
+### PWA & touch & responsive
+- **PWA:** `frontend/manifest.json` `name:"Lavagna Cibo — Meal Planner"` `short_name:"Cibo"` `display:standalone` `icons` from `assets/logo.jpg` `1408×768` crop `192/512` `frontend/icons/` via `PIL`, `frontend/sw.js` `CACHE lavagna-v3` `install` cache `index.html/style.css/app.js/manifest/icons` + `activate` clean + `fetch` network-first for `/api/*` else cache-first, `index.html:8` `manifest.json?v=3` + `theme-color` + `apple-touch-icon`, `app.js:546` `navigator.serviceWorker.register('sw.js')`, `docker` serves via `StaticFiles` fallback.
+- **Touch:** `isTouchDevice()` + `enableTouchDrag()` `app.js:1657` ghost `div` `fixed` following finger, `findTouchDrop` `elementFromPoint` → `.slot/.buffer-zone`, `handleDrop()` duplicate (`history`) vs move (`plate`), `plate` `!past` `enableTouchDrag` + `history-item` draggable, so phone/tablet drag works.
+- **Responsive:** `style.css:95` dynamic breakpoints `1280px` 7col, `1024px` 4col, `900px` `buffer-history-row` `1fr` + `weekly` 2col, `768px` `header` column + `app-header` column + `month-cell` 80px, `600px` `weekly` 1col + `buffer` pad, `480px` header 16px logo 28px + `weekly` pad + `plate` 13px, `360px` `view-btn` 13px, `1400px` max-width. Logo `clamp(28px,6vw,40px)` `index.html:15`, header `clamp(18px,4vw,22px)`, `user-info` `clamp(12px,2.5vw,14px)`.
 
 ### Autocomplete
-- Titles `GET /api/plates/autocomplete?house_id&query&limit=8` prefix `lower(title) LIKE q%`, grouped case-insensitive, ordered by count then `max(created_at)`, debounced 200ms.
-- Tags `GET /api/tags/autocomplete?house_id&query` prefix, frequency sorted, comma-fragment aware (`fish, me` → `me`).
+- Titles `GET /api/plates/autocomplete?house_id&query&limit=8` prefix `lower(title) LIKE q%`, grouped case-insensitive, ordered by count then `max(created_at)`, debounced 200ms, appears **right below the title field** (not below whole meal box) via `flex` wrapper `position:relative` + `absolute` `top:100%` width-matched, `has-autocomplete` `z-index` lift so `lunch` suggestions float above `dinner` card.
+- Tags `GET /api/tags/autocomplete?house_id&query` prefix, frequency sorted, comma-fragment aware (`fish, me` → `me`), also `GET /api/tags?house_id` for complete already-used list in `Settings → Tags`.
 
 ---
 
