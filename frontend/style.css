@@ -92,8 +92,54 @@ button:hover { opacity:0.92; filter:brightness(1.05); }
 .modal-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.4); }
 .modal-content { position:relative; background:var(--bg); width:min(900px,95vw); max-height:90vh; overflow:auto; border-radius:12px; padding:20px; z-index:1; border:1px solid var(--border); }
 .modal-slots { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-@media (max-width:900px){ #buffer-history-row{grid-template-columns:1fr} }
-@media (max-width:600px){ .modal-slots{grid-template-columns:1fr} #weekly-view{grid-template-columns:1fr} .house-actions{grid-template-columns:1fr}}
+/* Dynamic responsive handling for different screen sizes */
+@media (max-width:1280px){ #weekly-view{grid-template-columns:repeat(7,1fr)} }
+@media (max-width:1024px){ #weekly-view{grid-template-columns:repeat(4,1fr)} .app-header{padding:10px 16px} }
+@media (max-width:900px){ #buffer-history-row{grid-template-columns:1fr} #weekly-view{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:768px){
+  header{flex-direction:column; align-items:flex-start; gap:8px; padding:10px 14px}
+  header h1{font-size:clamp(18px, 5vw, 20px)}
+  header h1 img{width:clamp(24px, 8vw, 32px) !important; height:clamp(24px, 8vw, 32px) !important}
+  .app-header{flex-direction:column; align-items:stretch; gap:10px; padding:10px 14px}
+  .house-switcher{flex-wrap:wrap}
+  .view-switcher{justify-content:center}
+  .nav-controls{justify-content:space-between}
+  .month-grid{grid-template-columns:repeat(7,1fr); gap:4px}
+  .month-cell{min-height:80px; padding:6px}
+}
+@media (max-width:600px){
+  .modal-slots{grid-template-columns:1fr}
+  #weekly-view{grid-template-columns:1fr}
+  .house-actions{grid-template-columns:1fr}
+  #buffer-history-row{padding:12px}
+  .card{padding:12px; margin:8px 0}
+  .houses-container{padding:0 12px}
+  .auth-card{width:90vw; max-width:320px}
+}
+@media (max-width:480px){
+  header{padding:8px 12px}
+  header h1{font-size:16px}
+  header h1 img{width:28px !important; height:28px !important}
+  .app-header{padding:8px 12px}
+  #weekly-view{padding:12px; gap:8px}
+  .day-column{min-height:300px}
+  .plate{padding:6px}
+  .plate-title{font-size:13px}
+  .history-item{flex-direction:column; align-items:flex-start; gap:6px}
+  .modal-content{width:96vw; padding:14px; max-height:92vh}
+  .buffer-zone{padding:12px}
+}
+@media (max-width:360px){
+  header h1{font-size:15px}
+  .view-btn{padding:6px 8px; font-size:13px}
+  .nav-controls button{padding:6px 8px; font-size:13px}
+  #range-label{font-size:13px}
+}
+@media (min-width:1400px){
+  #weekly-view{max-width:1400px; margin:0 auto}
+  .houses-container{max-width:1000px}
+  .daily-container{max-width:900px}
+}
 #modal-close, #settings-close { position:absolute; top:10px; right:10px; background:#eee; color:#222; }
 #buffer-toggle { transition: all 0.15s; font-weight:600; }
 #buffer-toggle.active { background:#22c55e !important; color:#fff !important; border-color:#16a34a !important; }
