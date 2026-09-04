@@ -399,12 +399,16 @@ def set_template(house_id: int, data: TemplateIn, apply_future: bool = False, us
         raise HTTPException(400, "max 8 slots")
     h.daily_template = json.dumps(labels)
     db.commit()
-    # optionally apply to future dates >= today — make future dates exactly match template
+    # optionally apply to future dates >= today — only to following *empty* days (no plates), keep non-empty as is
     if apply_future:
         today=today_iso()
         future_dates = [row[0] for row in db.query(models.Slot.date).filter(models.Slot.house_id==house_id, models.Slot.date>=today).distinct().all()]
         template_set = set(lb.lower() for lb in labels)
         for d in future_dates:
+            # check if day has any plates (slot or day buffer, house+date)
+            has_plates = db.query(models.Plate).filter(models.Plate.house_id==house_id, models.Plate.date==d).first() is not None
+            if has_plates:
+                continue  # skip non-empty days
             existing = db.query(models.Slot).filter(models.Slot.house_id==house_id, models.Slot.date==d).all()
             existing_map = {s.label.lower(): s for s in existing}
             # update order and add missing
@@ -416,7 +420,7 @@ def set_template(house_id: int, data: TemplateIn, apply_future: bool = False, us
                 else:
                     ns = models.Slot(house_id=house_id, date=d, label=lab, sort_order=idx)
                     db.add(ns)
-            # delete slots not in template (move their plates to day buffer)
+            # delete slots not in template (no plates to move since empty, but keep logic)
             for s in existing:
                 if s.label.lower() not in template_set:
                     plates = db.query(models.Plate).filter(models.Plate.slot_id==s.id).all()
