@@ -16,6 +16,7 @@ class House(Base):
     invite_code = Column(String, unique=True, nullable=False, index=True)
     buffer_mode = Column(String, default="global", nullable=False)  # global or per_day
     daily_template = Column(Text, default='["lunch","dinner"]', nullable=False)  # JSON array of labels
+    tag_colors = Column(Text, default='{}', nullable=False)  # JSON map tag(lower) -> color #rrggbb
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
 
 class Membership(Base):

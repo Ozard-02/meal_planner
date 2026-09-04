@@ -160,6 +160,7 @@
       <button class="tab" data-tab="house">House</button>
       <button class="tab" data-tab="template">Daily Template</button>
       <button class="tab" data-tab="theme">Theme</button>
+      <button class="tab" data-tab="tags">Tags</button>
       <button class="tab" data-tab="language">Language</button>
     </div>
     <!-- user -->
@@ -263,6 +264,25 @@
           <div style="margin-top:8px; font-size:12px">Live preview — colors apply instantly. Stored per browser in localStorage.</div>
         </div>
         <div id="theme-msg" class="msg"></div>
+      </div>
+    </div>
+    <!-- tags -->
+    <div id="settings-tags" class="settings-pane" style="display:none">
+      <div class="card">
+        <h3>Tag Colors</h3>
+        <div style="font-size:12px; color:var(--muted)">Assign a color to each tag — pills will use it. Leave empty for default gray.</div>
+        <div id="tag-colors-list" style="margin-top:10px; display:flex; flex-direction:column; gap:8px"></div>
+        <div style="display:flex; gap:8px; margin-top:10px; align-items:center">
+          <input id="tag-colors-new-tag" placeholder="new tag (e.g. fish)" style="flex:1">
+          <input type="color" id="tag-colors-new-color" value="#e8e8e8">
+          <button id="tag-colors-add">Add</button>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px">
+          <button id="tag-colors-save">Save colors</button>
+          <button id="tag-colors-reset" style="background:#f5f5f5;color:#222">Reset</button>
+        </div>
+        <div id="tag-colors-msg" class="msg"></div>
+        <div id="tag-colors-preview" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px"></div>
       </div>
     </div>
     <!-- language -->

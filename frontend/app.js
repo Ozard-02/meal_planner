@@ -13,6 +13,7 @@ let state = {
   history: [],
   historyVisible: true,
   draggingHistory: null,
+  tagColors: {},
 };
 
 function headers() {
@@ -541,6 +542,100 @@ function saveCustomTheme(){
   const msg=document.getElementById("theme-msg");
   if(msg) { msg.textContent="Custom theme applied"; setTimeout(()=>msg.textContent="",2000); }
 }
+function tagColor(tag){
+  const c=state.tagColors[tag.toLowerCase()];
+  return c||null;
+}
+function tagStyle(tag){
+  const c=tagColor(tag);
+  if(!c) return "";
+  // auto text color contrast
+  const hex=c.replace("#","").trim();
+  let fg="#fff";
+  if(hex.length===6){
+    const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+    const lum=(0.299*r+0.587*g+0.114*b)/255;
+    fg=lum>0.6?"#222":"#fff";
+  }
+  return `background:${c};color:${fg};border-color:${c}`;
+}
+async function renderTagColors(){
+  const list=document.getElementById("tag-colors-list");
+  const preview=document.getElementById("tag-colors-preview");
+  if(!list) return;
+  list.innerHTML="";
+  // collect tags from history + current tagColors keys
+  const tagsSet=new Set(Object.keys(state.tagColors));
+  state.history.forEach(h=> h.tags.forEach(t=> tagsSet.add(t.toLowerCase())));
+  // also from calendar plates
+  if(state.calendar){
+    state.calendar.days.forEach(d=>{
+      d.slots.forEach(s=> s.plates.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase()))));
+      d.day_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
+    });
+    state.calendar.global_buffer.forEach(p=> (p.tags||[]).forEach(t=> tagsSet.add(t.toLowerCase())));
+  }
+  const tags=[...tagsSet].sort();
+  if(tags.length===0){
+    list.innerHTML="<div style='font-size:13px;color:var(--muted)'>No tags yet — create a plate with tags like fish, meat.</div>";
+  } else {
+    tags.forEach(tag=>{
+      const row=document.createElement("div");
+      row.style.display="flex"; row.style.alignItems="center"; row.style.gap="8px";
+      const label=document.createElement("span");
+      label.textContent=tag;
+      label.className="tag";
+      const col=tagColor(tag);
+      if(col) label.style.cssText+=tagStyle(tag);
+      label.style.minWidth="80px"; label.style.textAlign="center";
+      const input=document.createElement("input");
+      input.type="color";
+      input.value=col||"#e8e8e8";
+      input.title="Pick color for "+tag;
+      input.oninput=e=>{
+        state.tagColors[tag.toLowerCase()]=e.target.value;
+        label.style.cssText=tagStyle(tag);
+        updateTagPreview();
+      };
+      const del=document.createElement("button");
+      del.textContent="✕";
+      del.style.background="#fee"; del.style.color="#c00";
+      del.onclick=()=>{
+        delete state.tagColors[tag.toLowerCase()];
+        renderTagColors();
+        updateTagPreview();
+      };
+      row.appendChild(label); row.appendChild(input); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  updateTagPreview();
+}
+function updateTagPreview(){
+  const preview=document.getElementById("tag-colors-preview");
+  if(!preview) return;
+  preview.innerHTML="";
+  Object.entries(state.tagColors).forEach(([tag,col])=>{
+    const span=document.createElement("span");
+    span.className="tag";
+    span.textContent=tag;
+    span.style.cssText+=tagStyle(tag);
+    preview.appendChild(span);
+  });
+  if(Object.keys(state.tagColors).length===0){
+    preview.innerHTML="<span style='font-size:12px;color:var(--muted)'>No colors set</span>";
+  }
+}
+async function saveTagColors(){
+  const msg=document.getElementById("tag-colors-msg");
+  try{
+    const res=await api(`/api/houses/${state.currentHouseId}/tag-colors`,{method:"PUT", body:JSON.stringify({colors: state.tagColors})});
+    state.tagColors=res||{};
+    if(msg){ msg.textContent="Saved"; setTimeout(()=>msg.textContent="",2000); }
+    renderTagColors();
+    loadCalendar(); loadHistory();
+  }catch(e){ if(msg) msg.textContent=e.message; }
+}
 
 // --- init ---
 document.addEventListener("DOMContentLoaded", async ()=>{
@@ -649,6 +744,9 @@ function bindEvents(){
       if(tab==="template") renderTemplateEditor();
       if(tab==="house") refreshSettingsHouse();
       if(tab==="user") refreshSettingsUser();
+      if(tab==="tags") renderTagColors();
+      if(tab==="theme") applyTheme();
+      if(tab==="language") applyLanguage(currentLang);
     };
   });
   const su=document.getElementById("settings-save-username");
@@ -749,7 +847,28 @@ function bindEvents(){
       if(msg){ msg.textContent=t("settings.language.choose"); setTimeout(()=>msg.textContent="",2000); }
     };
   }
+  const tca=document.getElementById("tag-colors-add");
+  if(tca) tca.onclick=()=>{
+    const inp=document.getElementById("tag-colors-new-tag");
+    const col=document.getElementById("tag-colors-new-color");
+    const tag=inp.value.trim().toLowerCase();
+    if(!tag){ alert("tag required"); return; }
+    try{ normalize_color_test(tag); }catch{}
+    state.tagColors[tag]=col.value;
+    inp.value="";
+    renderTagColors();
+  };
+  const tcs=document.getElementById("tag-colors-save");
+  if(tcs) tcs.onclick=saveTagColors;
+  const tcr=document.getElementById("tag-colors-reset");
+  if(tcr) tcr.onclick=async()=>{
+    if(!confirm("Reset all tag colors?")) return;
+    state.tagColors={};
+    try{ await api(`/api/houses/${state.currentHouseId}/tag-colors`,{method:"PUT", body:JSON.stringify({colors:{}})}); }catch(e){}
+    renderTagColors(); loadCalendar(); loadHistory();
+  };
 }
+function normalize_color_test(c){ if(!c) throw new Error(); }
 function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
 
 function setAuthMode(m){
@@ -926,7 +1045,12 @@ async function loadCalendar(){
     if(bml) bml.textContent=`(${data.house.buffer_mode})`;
     const sel=document.getElementById("house-select");
     if(sel && sel.value!=String(state.currentHouseId)) sel.value=state.currentHouseId;
+    state.tagColors = data.house.tag_colors || {};
     render();
+    // refresh tag colors editor if open
+    if(document.getElementById("settings-tags") && document.getElementById("settings-tags").style.display!=="none"){
+      renderTagColors();
+    }
   }catch(e){
     console.error(e);
     alert("calendar load failed: "+e.message);
@@ -973,7 +1097,10 @@ function renderHistory(){
     div.draggable=true;
     div.title="Drag to duplicate to any meal/buffer (history stays)";
     div.style.cursor="grab";
-    const tagsHtml=entry.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+    const tagsHtml=entry.tags.map(t=>{
+      const st=tagStyle(t);
+      return `<span class="tag" ${st?`style="${st}"`:""}>${escapeHtml(t)}</span>`;
+    }).join("");
     div.innerHTML=`<div><strong>${escapeHtml(entry.title)}</strong> <span style="font-size:11px;color:#777">×${entry.count}</span><div style="font-size:11px;color:#555">${tagsHtml} ${entry.example_note?escapeHtml(entry.example_note):""}</div></div>`;
     div.addEventListener("dragstart", e=>{
       state.draggingHistory=entry;
@@ -1135,7 +1262,10 @@ function renderPlate(p, date, slotId){
   div.className="plate" + (past ? " past" : "");
   div.draggable = !past;
   div.dataset.plateId=p.id;
-  const tagsHtml=(p.tags||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("");
+  const tagsHtml=(p.tags||[]).map(t=>{
+    const st=tagStyle(t);
+    return `<span class="tag" ${st?`style="${st}"`:""}>${escapeHtml(t)}</span>`;
+  }).join("");
   const canEdit = state.user && p.proposed_by===state.user.id && !past;
   const actionsHtml = canEdit
     ? `<div class="plate-title-actions"><button class="icon-btn edit-btn" title="Edit">✎</button><button class="icon-btn del-btn" title="Delete">✕</button></div>`
